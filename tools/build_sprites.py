@@ -215,6 +215,75 @@ with open(os.path.join(OUT, 'manifest.json'), 'w') as f:
     json.dump(manifest, f, indent=0)
 print(len(manifest), 'sprites')
 
+# ───────── 팀장 NPC (추진·개발·사업) ─────────
+def remove_light_bg(im):
+    """흰/연회색 배경(투명 아님)을 투명으로: 테두리와 연결된 밝은 무채색 영역 + 큰 내부 배경 조각"""
+    a = np.array(im.convert('RGBA')).astype(np.int32)
+    rgb = a[:, :, :3]
+    mx, mn = rgb.max(2), rgb.min(2)
+    light = (mn >= 232) & (mx - mn <= 10)
+    lab, n = ndimage.label(light)
+    border = set(np.unique(np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]]))) - {0}
+    sizes = ndimage.sum(light, lab, range(1, n + 1))
+    kill = np.zeros(n + 1, bool)
+    for i in range(1, n + 1):
+        if i in border or sizes[i - 1] > 900:
+            kill[i] = True
+    bg = kill[lab]
+    edge = ndimage.binary_dilation(bg, iterations=1) & ~bg
+    soft = edge & (mn >= 200) & (mx - mn <= 18)
+    alpha = np.where(bg, 0, 255)
+    alpha = np.where(soft, ((255 - mn) * 255 / 55).clip(0, 255), alpha)
+    a[:, :, 3] = np.minimum(a[:, :, 3], alpha)
+    return Image.fromarray(a.astype(np.uint8))
+
+def split4(x, y, w, h):
+    q = w / 4
+    return [(int(x + i * q), y, int(q), h) for i in range(4)]
+
+CAPTAINS = {
+    'push': ('추진팀장 스프라이트 시트.png', True, {
+        'idle': [(23, 10, 199, 245)], 'run': split4(1291, 39, 483, 190),
+        'atk': [(24, 256, 185, 220), (220, 257, 192, 217), (418, 241, 226, 234), (626, 263, 239, 211)],
+        'hit': (910, 476, 172, 209), 'down': (1070, 530, 222, 150), 'revive': (1285, 406, 215, 300),
+        'victory': (1537, 465, 184, 222), 'icon': (60, 692, 194, 192), 'emblem': (1415, 685, 330, 202),
+        'bolt': (1557, 290, 217, 120),
+    }),
+    'dev': ('개발팀장 스프라이트 시트.png', True, {
+        'idle': [(9, 17, 213, 219)], 'run': split4(1285, 39, 486, 184),
+        'atk': [(17, 249, 194, 197), (203, 245, 218, 200), (417, 238, 233, 207), (631, 253, 240, 192)],
+        'hit': (895, 455, 180, 201), 'down': (1050, 505, 245, 160), 'revive': (1290, 393, 220, 290),
+        'victory': (1520, 450, 199, 204), 'icon': (73, 671, 207, 206), 'emblem': (1422, 650, 277, 230),
+        'bolt': (1542, 283, 214, 122),
+    }),
+    'biz': ('사업팀장 스프라이트 시트.png', False, {
+        'idle': [(44, 14, 211, 248), (267, 14, 215, 247), (492, 15, 213, 247), (714, 14, 215, 247)],
+        'run': [(1012, 27, 191, 236), (1199, 31, 186, 232), (1373, 35, 191, 228), (1564, 32, 188, 232)],
+        'atk': [(32, 293, 200, 215), (268, 292, 203, 211), (470, 285, 200, 216), (671, 296, 234, 203)],
+        'hit': (424, 530, 194, 189), 'down': (656, 551, 264, 168), 'revive': (967, 485, 322, 236),
+        'victory': (1547, 506, 191, 214), 'icon': (60, 748, 141, 135), 'emblem': (1017, 736, 144, 144),
+        'bolt': (1600, 345, 150, 125),
+    }),
+}
+CAP_SCALE = 170 / 245  # 모든 프레임 동일 배율
+for team, (fname, needs_bg, B) in CAPTAINS.items():
+    sheet = Image.open(os.path.join(SRC, fname))
+    sheet = remove_light_bg(sheet) if needs_bg else sheet.convert('RGBA')
+    a = np.array(sheet); a[:, :, 3][a[:, :, 3] < 30] = 0; sheet = Image.fromarray(a)
+    for i, b in enumerate(B['idle']):
+        save(f'cap_{team}_idle_{i}', largest(crop(sheet, *b)), scale=CAP_SCALE, center=True)
+    for i, b in enumerate(B['run']):
+        save(f'cap_{team}_run_{i}', largest(crop(sheet, *b)), scale=CAP_SCALE, center=True)
+    for i, b in enumerate(B['atk']):
+        save(f'cap_{team}_atk_{i}', largest(crop(sheet, *b)), scale=CAP_SCALE, center=True)
+    for k in ('hit', 'victory'):
+        save(f'cap_{team}_{k}', largest(crop(sheet, *B[k])), scale=CAP_SCALE, center=True)
+    save(f'cap_{team}_down', largest(crop(sheet, *B['down'])), scale=CAP_SCALE)
+    save(f'cap_{team}_revive', largest(crop(sheet, *B['revive']), keep_all=True, dil=8), scale=CAP_SCALE)
+    save(f'cap_{team}_icon', largest(crop(sheet, *B['icon'])), height=96)
+    save(f'cap_{team}_emblem', largest(crop(sheet, *B['emblem']), dil=8), height=72)
+    save(f'fx_cap_{team}_bolt', largest(crop(sheet, *B['bolt']), dil=8), height=60)
+
 # 게임 코드용 목록 갱신
 keys = sorted(k for k in manifest if not k.startswith(('title_', 'tile_', 'intro_', 'diorama')))
 with open(os.path.join(ROOT, 'src', 'config', 'spriteList.ts'), 'w') as f:

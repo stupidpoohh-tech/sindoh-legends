@@ -95,7 +95,7 @@ export class LaneManager {
   }
 
   private laneUnits(lane: LaneRuntime) {
-    return this.host.units.filter((u) => u.alive && u.lane === lane && !u.rally);
+    return this.host.units.filter((u) => u.alive && u.lane === lane && !u.rally && !u.captain);
   }
 
   private updateActivity(lane: LaneRuntime) {
@@ -121,7 +121,7 @@ export class LaneManager {
     let maxA = -1,
       minE = Infinity;
     for (const u of this.host.units) {
-      if (!u.alive || u.lane !== lane || u.rally) continue;
+      if (!u.alive || u.lane !== lane || u.rally || u.captain) continue;
       if (u.side === 'ally') maxA = Math.max(maxA, u.s);
       else minE = Math.min(minE, u.s);
     }

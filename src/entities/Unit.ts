@@ -4,6 +4,7 @@ import type { LaneRuntime } from '../systems/LaneManager';
 export type Side = 'ally' | 'enemy';
 export type Kind =
   | 'player' | 'push' | 'pushR' | 'dev' | 'devC' | 'biz' | 'bizC'
+  | 'capPush' | 'capDev' | 'capBiz'
   | 'bug' | 'phishing' | 'ransomware' | 'boss'
   | 'turret' | 'allyTurret' | 'inhibitor' | 'firewall' | 'nexus' | 'allyNexus';
 
@@ -37,6 +38,13 @@ export class Unit {
   lane: LaneRuntime | null = null;
   s = 0;
   rally = false;
+  /** 팀장 NPC: 라인당 고유 인스턴스, 쓰러지면 부활 */
+  captain = false;
+  respawnAt = 0;
+  /** 팀장 패시브 적용 여부 (중첩 없이 on/off) */
+  buffDef = false;
+  buffAs = false;
+  buffTower = false;
   rallyAngle = 0;
   expireAt = Infinity;
   /** 구조물 저장용 id */

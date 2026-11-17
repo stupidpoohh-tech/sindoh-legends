@@ -5,6 +5,7 @@ import { audio } from '../audio/audio';
 import { runtime, VideoEntry } from '../config/runtime';
 import { ICONS, championSvg, svgDataUrl } from '../art/svgs';
 import { WORLD } from '../world/mapData';
+import { CAPTAIN_DEFS } from '../config/captains';
 
 /**
  * HTML 기반 UI: 타이틀, HUD, 튜토리얼, 일시정지, 기억 발견, 기록관, 영상, 승리 화면.
@@ -304,6 +305,7 @@ function buildHud() {
         </div>
       </div>
       <div class="objective passthru" id="objective"></div>
+      <div class="buffs passthru" id="buffs"></div>
       <button class="img-btn" id="pauseBtn" aria-label="일시정지"><img src="${G('ui_pause')}" alt=""></button>
     </div>
     <div class="boss-bar passthru hidden" id="bossBar">
@@ -364,6 +366,14 @@ function arrowSvg() {
 }
 
 let lastHud: any = {};
+const BUFF_NAME: Record<string, string> = { push: CAPTAIN_DEFS.push.passiveName, dev: CAPTAIN_DEFS.dev.passiveName, biz: CAPTAIN_DEFS.biz.passiveName };
+const capIcons: Record<string, HTMLImageElement> = {};
+for (const t of ['push', 'dev', 'biz']) {
+  const im = new Image();
+  im.src = G('cap_' + t + '_icon');
+  capIcons[t] = im;
+}
+const CAP_COLOR: Record<string, string> = { push: '#3d8bff', dev: '#00b7ff', biz: '#00dc84' };
 function updateHud(d: any) {
   const hpR = Math.max(0, d.hp / d.maxHp);
   const hpBar = $('#hpBar');
@@ -404,6 +414,12 @@ function updateHud(d: any) {
     ar.classList.remove('hidden');
   } else ar.classList.add('hidden');
   if (d.respawn !== null) $('#respawnT').textContent = String(Math.ceil(d.respawn));
+  const bk = (d.buffs || []).join(',');
+  if (bk !== (lastHud.buffs || []).join(',')) {
+    $('#buffs').innerHTML = (d.buffs || [])
+      .map((t: string) => `<span class="buff"><img src="${G('cap_' + t + '_emblem')}" alt="">${BUFF_NAME[t] || ''}</span>`)
+      .join('');
+  }
   lastHud = d;
 }
 
@@ -466,6 +482,36 @@ function drawMinimapLoop(t: number) {
     c.arc(u.x * S, u.y * S, u.boss ? 9 : 3.5, 0, Math.PI * 2);
     c.fill();
   }
+  // 팀장 NPC 위치 (쓰러져 부활 대기 중이면 회색 + 본진 위치)
+  for (const cap of d.captains || []) {
+    const x = cap.x * S,
+      y = cap.y * S,
+      r = 13;
+    {
+      const ctx = c;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fillStyle = cap.dead ? '#3a3f4a' : CAP_COLOR[cap.team];
+      ctx.fill();
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(x, y, r - 2, 0, Math.PI * 2);
+      ctx.clip();
+      const im = capIcons[cap.team];
+      if (im.complete && im.naturalWidth) {
+        if (cap.dead) ctx.filter = 'grayscale(1) brightness(.6)';
+        ctx.drawImage(im, x - r + 2, y - r + 2, (r - 2) * 2, (r - 2) * 2);
+        ctx.filter = 'none';
+      }
+      ctx.restore();
+      if (cap.dead) {
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(String(Math.ceil(cap.respawn)), x, y + 5);
+      }
+    }
+  }
   if (d.player) {
     c.fillStyle = '#ffe28a';
     c.strokeStyle = '#000';
@@ -495,14 +541,16 @@ function showBanner(b: { text: string; sub?: string; kind?: string }) {
   el.classList.add('on');
 }
 
-function showUltOverlay() {
+function showUltOverlay(p?: { lines?: string[] }) {
   const el = $('#ultOverlay');
   el.classList.remove('hidden');
   const items = [...el.children] as HTMLElement[];
+  // 팀장 설정(captains.ts)의 문구: 추진팀 지원 도착! / 개발팀 지원 도착! / 사업팀 지원 도착!
+  if (p?.lines) p.lines.forEach((t, i) => items[i] && (items[i].textContent = t));
   items.forEach((c) => c.classList.remove('on'));
   void el.offsetWidth;
-  items.forEach((c, i) => later(() => c.classList.add('on'), i * 220));
-  later(() => el.classList.add('hidden'), 2600);
+  items.forEach((c, i) => later(() => c.classList.add('on'), i < 3 ? 350 + i * 400 : 1600));
+  later(() => el.classList.add('hidden'), 3600);
 }
 
 function showBossIntro() {

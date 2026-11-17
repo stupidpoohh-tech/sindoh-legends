@@ -13,6 +13,7 @@ import {
   MEMORY_SPOTS, MEMORY_TURRET_ID, MEMORY_VICTORY_ID, Pt, TeamId,
 } from '../world/mapData';
 import { Unit, Kind, Side } from '../entities/Unit';
+import { CAPTAIN_DEFS } from '../config/captains';
 import { LaneManager, LaneRuntime, LaneHost } from '../systems/LaneManager';
 
 type SkillKey = 'q' | 'w' | 'r';
@@ -45,6 +46,17 @@ const minionAnim = (k: string): Unit['anim'] => ({
   hit: `m_${k}_hit`,
 });
 const mv = (k: string, h = 58): ViewDef => ({ tex: `m_${k}_idle`, h, r: 16, hpW: 32, hpY: -h - 8, anim: minionAnim(k) });
+/** 팀장 NPC: 일반 미니언(58)의 약 1.4배 */
+const capView = (t: string): ViewDef => ({
+  tex: `cap_${t}_idle_0`, h: 82, r: 20, hpW: 44, hpY: -92,
+  anim: {
+    idle: t === 'biz' ? ['cap_biz_idle_0', 'cap_biz_idle_1', 'cap_biz_idle_2', 'cap_biz_idle_3'] : [`cap_${t}_idle_0`],
+    run: [0, 1, 2, 3].map((i) => `cap_${t}_run_${i}`),
+    atk: t === 'push' ? 'cap_push_atk_2' : `cap_${t}_atk_3`,
+    hit: `cap_${t}_hit`,
+  },
+});
+const CAPTAIN_KIND: Record<TeamId, Kind> = { push: 'capPush', dev: 'capDev', biz: 'capBiz' };
 const KIND_VIEW: Record<Kind, ViewDef> = {
   player: {
     tex: 'champ_idle', h: 104, r: 22, hpW: 54, hpY: -116,
@@ -56,6 +68,9 @@ const KIND_VIEW: Record<Kind, ViewDef> = {
   devC: mv('devC', 54),
   biz: mv('biz'),
   bizC: mv('bizC', 54),
+  capPush: capView('push'),
+  capDev: capView('dev'),
+  capBiz: capView('biz'),
   bug: { tex: 'e_bug_0', h: 42, r: 16, hpW: 30, hpY: -50, anim: { idle: ['e_bug_0', 'e_bug_1'], run: ['e_bug_0', 'e_bug_1', 'e_bug_2', 'e_bug_1'], atk: 'e_bug_2' } },
   phishing: { tex: 'e_phish_0', h: 44, r: 16, hpW: 30, hpY: -70, shadowW: 26, anim: { idle: ['e_phish_0', 'e_phish_1'], run: ['e_phish_0', 'e_phish_1'], atk: 'e_phish_2' } },
   ransomware: { tex: 'e_ransom_0', h: 70, r: 24, hpW: 48, hpY: -80, anim: { idle: ['e_ransom_0'], run: ['e_ransom_0', 'e_ransom_1'], atk: 'e_ransom_2' } },
@@ -70,7 +85,9 @@ const KIND_VIEW: Record<Kind, ViewDef> = {
 const RUIN: Partial<Record<Kind, string>> = { turret: 's_turret_ruin', inhibitor: 's_inhib_ruin', firewall: 's_turret_ruin', nexus: 's_nexus_ruin' };
 
 /** 미니언 종류 → 소속 팀 */
-const TEAM_OF: Partial<Record<Kind, TeamId>> = { push: 'push', pushR: 'push', dev: 'dev', devC: 'dev', biz: 'biz', bizC: 'biz' };
+const TEAM_OF: Partial<Record<Kind, TeamId>> = {
+  push: 'push', pushR: 'push', dev: 'dev', devC: 'dev', biz: 'biz', bizC: 'biz', capPush: 'push', capDev: 'dev', capBiz: 'biz',
+};
 const teamOf = (k: Kind): TeamId => TEAM_OF[k] || 'dev';
 
 const TEAM_COLOR: Record<TeamId, number> = { push: 0x3d8bff, dev: 0x00b7ff, biz: 0x00dc84 };
@@ -112,6 +129,10 @@ export class GameScene extends Phaser.Scene implements LaneHost {
   private bossDefeated = false;
   private firstTurretDone = false;
   private resumeNexus = false;
+  captains: Record<TeamId, Unit> = {} as Record<TeamId, Unit>;
+  private greetedCaptains = new Set<TeamId>();
+  private passiveTimer = 0;
+  private ultBusy = false;
 
   private gates = new Map<string, Phaser.GameObjects.GameObject[]>();
   private shields = new Map<string, Phaser.GameObjects.Image>();
@@ -135,6 +156,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
     this.createStructures();
     this.createPlayer();
     this.lanesMgr = new LaneManager(this);
+    this.createCaptains();
     this.createMemories();
     this.createSigns();
 
@@ -182,6 +204,10 @@ export class GameScene extends Phaser.Scene implements LaneHost {
     this.bossDefeated = false;
     this.firstTurretDone = false;
     this.resumeNexus = false;
+    this.captains = {} as Record<TeamId, Unit>;
+    this.greetedCaptains = new Set();
+    this.passiveTimer = 0;
+    this.ultBusy = false;
     this.gates = new Map();
     this.shields = new Map();
     this.memories = [];
@@ -455,6 +481,161 @@ export class GameScene extends Phaser.Scene implements LaneHost {
     return u;
   }
 
+  /* ─────────── 팀장 NPC (Ally Captain) ─────────── */
+  /** 라인당 1명의 고유 인스턴스. 미니언 AI(updateMinion)를 그대로 재사용 */
+  private createCaptains() {
+    for (const team of ['push', 'dev', 'biz'] as TeamId[]) {
+      const def = CAPTAIN_DEFS[team];
+      const lane = this.lanesMgr.byId(def.lane);
+      const s0 = lane.sAllyTurret + 60;
+      const p0 = lane.point(s0);
+      const u = this.makeUnit(CAPTAIN_KIND[team], 'ally', p0.x, p0.y, 1);
+      this.applyStats(u, BALANCE.captains[team]);
+      u.speed = BALANCE.captains[team].speed;
+      u.captain = true;
+      u.lane = lane;
+      u.s = s0;
+      u.setHpColor(0x3d9bff);
+      u.refreshHp();
+      // 이름표 + 패시브 범위 표시
+      const tag = this.add
+        .text(0, -104, def.name, {
+          fontFamily: 'Freesentation, Pretendard, sans-serif', fontSize: '14px', color: '#ffffff', fontStyle: 'bold',
+          stroke: '#0b1a45', strokeThickness: 4, resolution: 2,
+        })
+        .setOrigin(0.5);
+      tag.setBackgroundColor('rgba(19,40,95,0.75)').setPadding(5, 1, 5, 1);
+      const aura = this.add.image(0, 2, 'fx_ring').setTint(TEAM_COLOR[team]).setAlpha(0.28);
+      aura.setDisplaySize(BALANCE.captains.passiveRadius * 2, BALANCE.captains.passiveRadius * 1.24);
+      u.view.addAt(aura, 0);
+      u.view.add(tag);
+      this.tweens.add({ targets: aura, alpha: 0.12, yoyo: true, repeat: -1, duration: 1300 });
+      this.captains[team] = u;
+    }
+  }
+
+  /** 체력이 낮으면 아군 포탑 쪽으로 후퇴해 회복 후 복귀 (보스전 중에는 후퇴하지 않음) */
+  private captainRetreat(u: Unit, dt: number) {
+    const C = BALANCE.captains;
+    const st = u as any;
+    const inBoss = !!(this.boss && this.boss.alive);
+    if (!st.retreating && !inBoss && u.hp < u.maxHp * C.retreatAt) {
+      st.retreating = true;
+      u.target = null;
+      if (this.onScreen(u.x, u.y)) this.floatText(u.x, u.y - 110, '재정비!', '#9fdcff', 14);
+    }
+    if (!st.retreating) return false;
+    const lane = u.lane!;
+    const safeS = lane.sAllyTurret;
+    const P = lane.point(Math.max(0, safeS));
+    if (Math.hypot(P.x - u.x, P.y - u.y) > 20) {
+      this.moveToward(u, P.x, P.y, dt);
+      u.s = lane.poly.project(u);
+    } else {
+      u.hp = Math.min(u.maxHp, u.hp + u.maxHp * C.retreatRegen * dt);
+      u.refreshHp();
+      if (u.hp >= u.maxHp * C.retreatUntil) st.retreating = false;
+    }
+    return true;
+  }
+
+  /** 팀장의 전진 한계: 부장님이 다음 적 구조물 근처에 없으면 포탑 사거리 밖에서 대기 */
+  private captainStopS(lane: LaneRuntime) {
+    const nextS = lane.turretAlive ? lane.sEnemyTurret : lane.inhibAlive ? lane.sInhib : -1;
+    if (nextS < 0) return lane.allyStopS;
+    const pos = lane.point(nextS);
+    const assist = !this.dead && Math.hypot(this.player.x - pos.x, this.player.y - pos.y) < BALANCE.captains.structureAssistRange;
+    return assist ? lane.allyStopS : Math.min(lane.allyStopS, nextS - BALANCE.structures.enemyTurret.range - 60);
+  }
+
+  private captainDown(u: Unit) {
+    u.alive = false;
+    u.hp = 0;
+    u.refreshHp();
+    (u as any).retreating = false;
+    u.target = null;
+    u.respawnAt = this.simTime + BALANCE.captains.respawnSeconds;
+    u.rootUntil = 0;
+    u.slowUntil = 0;
+    const team = teamOf(u.kind);
+    if (this.onScreen(u.x, u.y)) {
+      // 쓰러짐 → 빛과 함께 본진 귀환
+      u.view.setVisible(true);
+      u.setTex(`cap_${team}_down`);
+      u.sprite.clearTint();
+      this.time.delayedCall(700, () => {
+        if (u.alive) return;
+        this.lightPillar(u.x, u.y, TEAM_COLOR[team]);
+        this.tweens.add({ targets: u.view, alpha: 0, duration: 400 });
+      });
+    } else u.view.setAlpha(0);
+    this.floatText(u.x, u.y - 110, `${CAPTAIN_DEFS[team].name} 귀환 (${BALANCE.captains.respawnSeconds}초 후 복귀)`, '#9fdcff', 14);
+  }
+
+  private captainRespawn(u: Unit) {
+    const lane = u.lane!;
+    const p0 = lane.point(0);
+    u.alive = true;
+    u.hp = u.maxHp;
+    u.refreshHp();
+    u.s = 0;
+    u.x = p0.x;
+    u.y = p0.y;
+    u.target = null;
+    u.hitFlash = 0;
+    u.attackAnim = 0;
+    this.tweens.killTweensOf(u.view);
+    u.view.setAlpha(1).setPosition(u.x, u.y);
+    if (this.onScreen(u.x, u.y)) {
+      const team = teamOf(u.kind);
+      this.playFrames(u.x, u.y + 8, [`cap_${team}_revive`], { height: 110, hold: 300, depth: u.y + 1, originY: 0.95 });
+      this.lightPillar(u.x, u.y, TEAM_COLOR[team]);
+    }
+  }
+
+  /** 부활 타이머, 화면 밖 라인 대기, 패시브 갱신 */
+  private updateCaptains(dt: number) {
+    const C = BALANCE.captains;
+    for (const team of ['push', 'dev', 'biz'] as TeamId[]) {
+      const u = this.captains[team];
+      if (!u) continue;
+      if (!u.alive) {
+        if (this.simTime >= u.respawnAt) this.captainRespawn(u);
+        continue;
+      }
+      const lane = u.lane!;
+      if (!lane.active) {
+        // 경량 계산: 전선 뒤에서 대기하며 체력 회복 (HP·부활 상태는 그대로 유지)
+        const s = Math.max(0, Math.min(lane.front - 90, lane.allyStopS));
+        const p = lane.point(s);
+        u.s = s;
+        u.x = p.x;
+        u.y = p.y;
+        u.moving = false;
+        u.target = null;
+        u.hp = Math.min(u.maxHp, u.hp + u.maxHp * C.dormantRegen * dt);
+        u.refreshHp();
+      }
+    }
+    // 패시브: 0.25초마다 범위 판정 (중첩 없이 on/off)
+    this.passiveTimer -= dt;
+    if (this.passiveTimer > 0) return;
+    this.passiveTimer = 0.25;
+    const R = C.passiveRadius;
+    const caps = (['push', 'dev', 'biz'] as TeamId[]).map((t) => [t, this.captains[t]] as const).filter(([, c]) => c && c.alive && c.lane?.active);
+    for (const u of this.units) {
+      if (!u.alive || u.side !== 'ally' || u.isStructure) continue;
+      u.buffDef = u.buffAs = u.buffTower = false;
+      if (u === this.player && this.dead) continue;
+      for (const [t, c] of caps) {
+        if (u.dist(c) > R) continue;
+        if (t === 'push') u.buffDef = true;
+        else if (t === 'dev') u.buffAs = true;
+        else u.buffTower = true;
+      }
+    }
+  }
+
   /** 궁극기/지원 이벤트용 아군 미니언 */
   private spawnRally(team: TeamId, angle: number, duration: number) {
     const r = 120;
@@ -574,17 +755,19 @@ export class GameScene extends Phaser.Scene implements LaneHost {
       if (!u.alive || u === this.player) continue;
       if (u.isStructure) this.updateStructure(u, dt);
       else if (u.kind === 'boss') this.updateBoss(u, dt);
+      else if (u.captain && u.lane && !u.lane.active) continue; // 화면 밖 라인: 상태만 유지
       else this.updateMinion(u, dt);
     }
     this.updateProjectiles(dt);
     this.lanesMgr.update(dt);
+    this.updateCaptains(dt);
     this.checkMemories();
     this.checkProgressTriggers();
     this.updateBubbles();
     this.drawAimLines();
 
     // 죽은 개체 정리
-    if (this.units.some((u) => !u.alive)) this.units = this.units.filter((u) => u.alive || u === this.player || (u.isStructure && u.kind !== 'boss'));
+    if (this.units.some((u) => !u.alive)) this.units = this.units.filter((u) => u.alive || u === this.player || u.captain || (u.isStructure && u.kind !== 'boss'));
 
     for (const k of ['q', 'w', 'r'] as SkillKey[]) this.cd[k] = Math.max(0, this.cd[k] - dt);
     this.hudTimer -= dt;
@@ -657,7 +840,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
       if (d <= p.range) {
         p.facing = target.x >= p.x ? 1 : -1;
         if (p.atkTimer <= 0) {
-          p.atkTimer = p.interval;
+          p.atkTimer = p.interval * (p.buffAs ? BALANCE.captains.devAttackInterval : 1);
           p.attackAnim = 0.22;
           audio.play('attack');
           this.fireProjectile(p, target, p.damage, 'player');
@@ -755,6 +938,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
   private castSkill(k: SkillKey) {
     if (!fsm.isRunning || this.cinematic || this.dead) return;
     if (this.cd[k] > 0) return;
+    if (k === 'r' && this.ultBusy) return;
     const S = BALANCE.skills;
     const p = this.player;
     bus.emit('tut:skill');
@@ -801,46 +985,80 @@ export class GameScene extends Phaser.Scene implements LaneHost {
     this.pushHud();
   }
 
+  /**
+   * R 전 부서 집결!
+   * 0.0s 메시지 → 0.35/0.75/1.15s 추진·개발·사업팀장 등장(시각적 분신) + 대표 미니언 합류
+   * → 1.7s 합동 공격 → 3.6s 분신 퇴장. 실제 팀장 인스턴스는 각 라인에 그대로 유지.
+   */
   private castUlt() {
+    if (this.ultBusy) return;
+    this.ultBusy = true;
     const S = BALANCE.skills.r;
     const p = this.player;
     this.cd.r = S.cooldown;
     this.castAnim = 1.0;
     audio.play('r');
     audio.voice('voice_summon');
-    bus.emit('ult');
-    const inBoss = this.boss && this.boss.alive;
     const teams: TeamId[] = ['push', 'dev', 'biz'];
-    const existing = this.units.filter((u) => u.alive && u.rally).length;
-    if (existing < 6) {
-      let k = 0;
-      for (const t of teams)
-        for (let i = 0; i < S.rallyCount; i++) {
-          const ang = (k++ / (teams.length * S.rallyCount)) * Math.PI * 2;
-          this.spawnRally(t, ang, inBoss && this.bossState.support ? 9999 : S.rallyDuration);
-        }
-    }
+    bus.emit('ult', { lines: teams.map((t) => CAPTAIN_DEFS[t].rallyLine) });
+    const inBoss = !!(this.boss && this.boss.alive);
     this.shockwave(p.x, p.y, 0xffe28a, 260, 700);
     this.playFrames(p.x, p.y + 20, ['fx_r_0', 'fx_r_1', 'fx_r_2', 'fx_r_3'], { height: 230, frameMs: 170, hold: 500, depth: p.y + 5, originY: 0.85 });
     this.cameras.main.flash(250, 255, 240, 200);
 
-    this.time.delayedCall(750, () => {
+    const clones: Phaser.GameObjects.Container[] = [];
+    const spots = [Math.PI * 0.9, Math.PI * 0.5, Math.PI * 0.1]; // 좌측·전방·우측
+    const existing = this.units.filter((u) => u.alive && u.rally).length;
+    teams.forEach((team, i) => {
+      this.time.delayedCall(350 + i * 400, () => {
+        if (!this.scene.isActive()) return;
+        const a = spots[i];
+        const x = p.x + Math.cos(a) * 130,
+          y = p.y + Math.sin(a) * 85;
+        clones.push(this.captainClone(team, x, y));
+        if (existing < 6)
+          for (let k = 0; k < S.rallyCount; k++) this.spawnRally(team, a + (k ? 0.5 : -0.5), inBoss && this.bossState.support ? 9999 : S.rallyDuration);
+      });
+    });
+
+    this.time.delayedCall(1700, () => {
       if (!this.scene.isActive()) return;
       const dmg = S.burstDamage + 60 * (this.level - 1);
-      const rallies = this.units.filter((u) => u.alive && u.rally);
-      // 합동 공격: 각 팀 미니언이 광선 발사
-      for (const r of rallies) {
-        const t = this.boss && this.boss.alive && r.dist(this.boss) < 700 ? this.boss : this.findTargetFor(r, 600);
-        if (t) {
-          this.beam(r.x, r.y - 30, t.x, t.y - 40, TEAM_COLOR[teamOf(r.kind)]);
-          this.playFrames(t.x, t.y - 30, ['fx_q_hit'], { height: 110, hold: 200, add: true });
+      const pick = (x: number, y: number) => {
+        if (this.boss && this.boss.alive && Math.hypot(this.boss.x - x, this.boss.y - y) < 750) return this.boss;
+        let best: Unit | null = null,
+          bd = 650;
+        for (const o of this.units) {
+          if (!o.alive || o.side !== 'enemy' || o.invulnerable) continue;
+          const d = Math.hypot(o.x - x, o.y - y);
+          if (d < bd) {
+            bd = d;
+            best = o;
+          }
         }
+        return best;
+      };
+      // 팀장 분신 합동 공격
+      clones.forEach((c, i) => {
+        const team = teams[i];
+        const img = c.getAt(1) as Phaser.GameObjects.Image;
+        if (this.textures.exists(`cap_${team}_atk_3`)) img.setTexture(`cap_${team}_atk_3`);
+        const t = pick(c.x, c.y);
+        if (t) {
+          this.beam(c.x, c.y - 50, t.x, t.y - 50, TEAM_COLOR[team]);
+          this.playFrames(t.x, t.y - 40, ['fx_q_hit'], { height: 120, hold: 200, add: true });
+        }
+      });
+      // 대표 미니언 합동 공격
+      for (const r of this.units.filter((u) => u.alive && u.rally)) {
+        const t = pick(r.x, r.y);
+        if (t) this.beam(r.x, r.y - 30, t.x, t.y - 40, TEAM_COLOR[teamOf(r.kind)]);
       }
       this.beam(p.x, p.y - 60, p.x, p.y - 400, 0xffe28a);
       for (const u of this.units) {
         if (!u.alive || u.side !== 'enemy' || u.invulnerable) continue;
         if (u.kind === 'boss') {
-          if (p.dist(u) > 700) continue;
+          if (p.dist(u) > 750) continue;
           if (this.bossState.support) this.bossState.ultUsed = true;
           this.dealDamage(u, dmg + u.maxHp * S.bossBonusRatio, p);
           this.glitchBurst(u.x, u.y - 60, 14);
@@ -854,6 +1072,36 @@ export class GameScene extends Phaser.Scene implements LaneHost {
       this.cameras.main.shake(400, 0.012);
       audio.play('explode');
     });
+
+    this.time.delayedCall(3600, () => {
+      for (const c of clones) {
+        if (!c.active) continue;
+        this.lightPillar(c.x, c.y, 0xffe28a);
+        this.tweens.add({ targets: c, alpha: 0, duration: 350, onComplete: () => c.destroy() });
+      }
+      this.ultBusy = false;
+    });
+  }
+
+  /** 집결 연출용 팀장 분신 (전투 판정 없음, 실제 팀장 상태와 무관) */
+  private captainClone(team: TeamId, x: number, y: number) {
+    const key = this.textures.exists(`cap_${team}_victory`) ? `cap_${team}_victory` : KIND_VIEW[CAPTAIN_KIND[team]].tex;
+    const shadow = this.add.image(0, 0, 'fx_shadow').setDisplaySize(50, 20);
+    const img = this.add.image(0, 4, key).setOrigin(0.5, 0.92);
+    img.setScale(90 / img.height).setFlipX(x > this.player.x);
+    const tag = this.add
+      .text(0, -112, CAPTAIN_DEFS[team].name, {
+        fontFamily: 'Freesentation, Pretendard, sans-serif', fontSize: '15px', color: '#ffe9a3', fontStyle: 'bold',
+        stroke: '#0b1a45', strokeThickness: 5, resolution: 2,
+      })
+      .setOrigin(0.5);
+    const c = this.add.container(x, y, [shadow, img, tag]).setDepth(y).setAlpha(0);
+    this.tweens.add({ targets: c, alpha: 1, duration: 200 });
+    this.playFrames(x, y + 8, [`cap_${team}_revive`], { height: 120, hold: 150, depth: y + 1, originY: 0.95 });
+    this.lightPillar(x, y, TEAM_COLOR[team]);
+    this.shockwave(x, y, TEAM_COLOR[team], 120, 500);
+    audio.play('summon');
+    return c;
   }
 
   /* ─────────── 미니언 AI ─────────── */
@@ -864,6 +1112,8 @@ export class GameScene extends Phaser.Scene implements LaneHost {
       if (!o.alive || o.side === u.side) continue;
       // 무적 구조물은 아군 쪽에서 공격 대상으로 삼지 않음 (적은 아군 포탑을 향해 공격)
       if (o.invulnerable && u.side === 'ally') continue;
+      // 팀장 NPC는 부장님이 근처에 있을 때만 구조물 공격 (단독 공략 방지)
+      if (u.captain && o.isStructure && (this.dead || this.player.dist(o) > BALANCE.captains.structureAssistRange)) continue;
       if (o.kind === 'player' && this.dead) continue;
       const d = u.dist(o) - o.radius;
       if (d > range) continue;
@@ -884,6 +1134,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
       return;
     }
     u.moving = false;
+    if (u.captain && this.captainRetreat(u, dt)) return;
     u.atkTimer -= dt;
     u.scanTimer -= dt;
     if (u.scanTimer <= 0) {
@@ -912,7 +1163,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
       if (d <= u.range) {
         u.facing = tt.x >= u.x ? 1 : -1;
         if (u.atkTimer <= 0) {
-          u.atkTimer = u.interval;
+          u.atkTimer = u.interval * (u.buffAs ? BALANCE.captains.devAttackInterval : 1);
           u.attackAnim = 0.18;
           this.minionAttack(u, tt);
         }
@@ -930,7 +1181,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
     if (u.lane) {
       const lane = u.lane;
       const dir = u.side === 'ally' ? 1 : -1;
-      const stopS = u.side === 'ally' ? lane.allyStopS : 0;
+      const stopS = u.side === 'ally' ? (u.captain ? this.captainStopS(lane) : lane.allyStopS) : 0;
       let P = lane.point(u.s);
       if (Math.hypot(P.x - u.x, P.y - u.y) < 16) {
         const canGo = dir > 0 ? u.s < stopS : u.s > stopS;
@@ -980,7 +1231,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
           hit.slowMult = 1 - E.slow;
         });
       } else {
-        const type = u.kind === 'dev' ? 'laser' : u.kind === 'pushR' ? 'spear' : u.kind === 'devC' ? 'blueorb' : 'cannon';
+        const type = u.captain ? `cap_${teamOf(u.kind)}` : u.kind === 'dev' ? 'laser' : u.kind === 'pushR' ? 'spear' : u.kind === 'devC' ? 'blueorb' : 'cannon';
         this.fireProjectile(u, t, u.damage, type);
       }
     } else {
@@ -1040,8 +1291,8 @@ export class GameScene extends Phaser.Scene implements LaneHost {
       if (!o.alive || o.side === u.side || o.isStructure) continue;
       const d = u.dist(o) - o.radius;
       if (d > u.range) continue;
-      if (o.kind === 'player' || o.kind === 'boss') {
-        if (!(o.kind === 'player' && this.dead)) champ = o;
+      if (o.kind === 'player' || o.kind === 'boss' || o.captain) {
+        if (!(o.kind === 'player' && this.dead) && (!champ || champ.captain)) champ = o;
         continue;
       }
       if (d < bd) {
@@ -1329,6 +1580,10 @@ export class GameScene extends Phaser.Scene implements LaneHost {
       glow = this.add.image(sx, sy, 'fx_glow').setTint(0xff3bd4).setScale(0.32).setBlendMode('ADD');
       speed = 480;
       spin = 8;
+    } else if (type.startsWith('cap_') && this.textures.exists(`fx_${type}_bolt`)) {
+      // 팀장 에너지탄 (팀장 스프라이트 시트의 투사체)
+      img = this.add.image(sx, sy, `fx_${type}_bolt`).setScale(0.6).setBlendMode('ADD');
+      speed = 640;
     } else if (type === 'spear') {
       img = this.add.image(sx, sy, 'fx_bolt').setTint(0x7fb3ff).setScale(0.8, 0.5);
       speed = 700;
@@ -1423,6 +1678,8 @@ export class GameScene extends Phaser.Scene implements LaneHost {
     if (!t.alive || t.invulnerable) return;
     if (t.kind === 'player' && this.dead) return;
     let dmg = amount * t.armor;
+    if (t.buffDef) dmg *= BALANCE.captains.pushDamageTaken;
+    if (t.isStructure && src?.buffTower) dmg *= BALANCE.captains.bizStructureDamage;
     if (t.shieldUntil > this.simTime) dmg *= 1 - BALANCE.skills.w.damageReduction;
     dmg = Math.max(1, Math.round(dmg));
     let hp = t.hp - dmg;
@@ -1451,6 +1708,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
       this.playerDied();
       return;
     }
+    if (u.captain) return this.captainDown(u);
     u.alive = false;
     if (u.kind === 'boss') return this.bossDied(u);
     if (u.isStructure) return this.structureDestroyed(u);
@@ -1568,6 +1826,13 @@ export class GameScene extends Phaser.Scene implements LaneHost {
     }
     // 라인 인사 말풍선
     for (const lane of this.lanesMgr.lanes) {
+      const cap = this.captains[lane.def.team];
+      if (cap && cap.alive && !this.greetedCaptains.has(lane.def.team) && cap.dist(p) < 280) {
+        this.greetedCaptains.add(lane.def.team);
+        lane.greeted = true;
+        this.bubble(cap, CAPTAIN_DEFS[lane.def.team].greeting, 2.8);
+        continue;
+      }
       if (lane.greeted || !lane.active) continue;
       const near = this.units.find((u) => u.alive && u.lane === lane && u.side === 'ally' && u.dist(p) < 260);
       if (near) {
@@ -1748,7 +2013,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
       const tinted = u.hitFlash > 0;
       if (tinted !== (u as any)._tinted) {
         (u as any)._tinted = tinted;
-        if (tinted) u.sprite.setTint(u === this.player ? 0xff9a9a : 0xffc0c0);
+        if (tinted) u.sprite.setTint(u === this.player ? 0xffc8c8 : 0xffc0c0);
         else if (u.side === 'enemy' && u.lane?.inhibAlive) u.sprite.setTint(0xffb3c6);
         else u.sprite.clearTint();
       }
@@ -1789,6 +2054,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
         r: [this.cd.r, this.cd.r > S.r.cooldown ? S.r.initialCooldown : S.r.cooldown],
       },
       shield: p.shieldUntil > this.simTime,
+      buffs: this.dead ? [] : [p.buffDef && 'push', p.buffAs && 'dev', p.buffTower && 'biz'].filter(Boolean),
       rooted: p.rootUntil > this.simTime,
       objective: obj.text,
       arrow,
@@ -1834,6 +2100,11 @@ export class GameScene extends Phaser.Scene implements LaneHost {
       units: this.units.filter((u) => u.alive && !u.isStructure && u !== this.player).map((u) => ({ x: u.x, y: u.y, side: u.side, boss: u.kind === 'boss' })),
       structures: this.units.filter((u) => u.isStructure).map((u) => ({ x: u.x, y: u.y, side: u.side, alive: u.alive, kind: u.kind })),
       memories: this.memories.filter((m) => !m.taken).map((m) => m.pos),
+      captains: (['push', 'dev', 'biz'] as TeamId[]).filter((t) => this.captains[t]).map((t) => {
+        const c = this.captains[t];
+        const home = c.lane!.point(0);
+        return c.alive ? { team: t, x: c.x, y: c.y, dead: false } : { team: t, x: home.x, y: home.y, dead: true, respawn: Math.max(0, c.respawnAt - this.simTime) };
+      }),
       lanes: this.lanesMgr.lanes.map((l) => ({ id: l.def.id, front: l.point(l.front), active: l.active, team: l.def.teamName })),
     };
   }

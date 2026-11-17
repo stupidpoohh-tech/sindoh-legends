@@ -66,6 +66,28 @@ export const BALANCE = {
     biz: { hp: 430, damage: 21, interval: 1.0, range: 50, speed: 86, armor: 0.85, aggro: 210 },
     bizC: { hp: 420, damage: 46, interval: 1.6, range: 205, speed: 82, armor: 0.9, aggro: 230 },
   },
+  /** 팀장 NPC (라인당 1명, 미니언 AI 재사용). 일반 미니언 대비 HP 약 2.3배, 공격력 약 1.35배 */
+  captains: {
+    push: { hp: 1100, damage: 26, interval: 1.0, range: 52, speed: 88, armor: 0.7, aggro: 230 },
+    dev: { hp: 820, damage: 33, interval: 1.05, range: 190, speed: 88, armor: 0.9, aggro: 240 },
+    biz: { hp: 950, damage: 58, interval: 1.5, range: 205, speed: 84, armor: 0.85, aggro: 240 },
+    respawnSeconds: 15,
+    /** 팀장이 적 구조물을 공격하려면 부장님이 이 거리 안에 있어야 함 (단독 공략 방지) */
+    structureAssistRange: 650,
+    passiveRadius: 300,
+    /** 추진팀장 '전방 지휘': 받는 피해 배율 */
+    pushDamageTaken: 0.8,
+    /** 개발팀장 '기술 지원': 공격 간격 배율 (0.8 = 공격 속도 +25%) */
+    devAttackInterval: 0.8,
+    /** 사업팀장 '전략적 지원': 포탑·구조물 대상 피해 배율 */
+    bizStructureDamage: 1.3,
+    /** 비활성(화면 밖) 라인에 있을 때 초당 HP 회복 비율 */
+    dormantRegen: 0.03,
+    /** HP 비율이 이 값 아래면 아군 포탑으로 후퇴 → retreatUntil 까지 회복 후 복귀 */
+    retreatAt: 0.25,
+    retreatUntil: 0.75,
+    retreatRegen: 0.08,
+  },
   /** 라인별 아군 웨이브 구성 */
   allyWaves: {
     push: ['push', 'push', 'pushR'],
@@ -83,15 +105,15 @@ export const BALANCE = {
   },
 
   structures: {
-    enemyTurret: { hp: 5400, damage: 95, minionDamage: 85, interval: 1.15, range: 270 },
+    enemyTurret: { hp: 7000, damage: 95, minionDamage: 85, interval: 1.15, range: 270 },
     allyTurret: { damage: 80, interval: 1.0, range: 270 },
-    inhibitor: { hp: 2000 },
+    inhibitor: { hp: 2400 },
     firewall: { hp: 1500, damage: 45, interval: 1.4, range: 240 },
     nexus: { hp: 6000 },
   },
 
   boss: {
-    hp: 15000,
+    hp: 17000,
     speed: 110,
     shotDamage: 70,
     shotSpeed: 360,
