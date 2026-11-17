@@ -1,0 +1,50 @@
+{
+  "_comment": "영상 설정 파일. src(영상 경로 또는 URL)와 poster(썸네일)만 바꾸면 게임에 반영됩니다. 파일이 없으면 플레이스홀더가 표시됩니다. unlockBy: 해당 기억을 발견하면 해금(mem_base / mem_jungle / mem_river / mem_turret / mem_victory).",
+  "videos": [
+    {
+      "id": "workshop_01",
+      "title": "워크숍의 기억 · 1",
+      "description": "함께 떠났던 첫 번째 워크숍의 순간들",
+      "duration": "약 3분",
+      "src": "media/videos/workshop_01.mp4",
+      "poster": "media/thumbs/workshop_01.jpg",
+      "unlockBy": "mem_base"
+    },
+    {
+      "id": "workshop_02",
+      "title": "워크숍의 기억 · 2",
+      "description": "두 번째 워크숍, 웃음이 끊이지 않던 날",
+      "duration": "약 3분",
+      "src": "media/videos/workshop_02.mp4",
+      "poster": "media/thumbs/workshop_02.jpg",
+      "unlockBy": "mem_jungle"
+    },
+    {
+      "id": "workshop_03",
+      "title": "워크숍의 기억 · 3",
+      "description": "세 번째 워크숍의 이야기",
+      "duration": "약 3분",
+      "src": "media/videos/workshop_03.mp4",
+      "poster": "media/thumbs/workshop_03.jpg",
+      "unlockBy": "mem_river"
+    },
+    {
+      "id": "esports",
+      "title": "사내 e스포츠 대회",
+      "description": "부장님이 개최하신 사내 e스포츠 대회 하이라이트",
+      "duration": "약 1분",
+      "src": "media/videos/esports.mp4",
+      "poster": "media/thumbs/esports.jpg",
+      "unlockBy": "mem_turret"
+    },
+    {
+      "id": "thankyou",
+      "title": "부장님께 드리는 감사 메시지",
+      "description": "함께한 동료들이 전하는 마음",
+      "duration": "",
+      "src": "media/videos/thankyou.mp4",
+      "poster": "media/thumbs/thankyou.jpg",
+      "unlockBy": "mem_victory"
+    }
+  ]
+}

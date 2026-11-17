@@ -1,0 +1,44 @@
+{
+  "_comment": "이미지·오디오 교체 설정. 빈 문자열이면 게임 내장 그래픽/합성 사운드를 사용합니다. 경로는 index.html 기준 상대경로 또는 https URL. 파일을 찾지 못하면 자동으로 내장 자산을 사용합니다.",
+  "champion": {
+    "name": "GAME MASTER",
+    "affiliation": "SINDOH",
+    "subtitle": "THE LAST SUMMONER"
+  },
+  "images": {
+    "championFace": "",
+    "champion_idle": "",
+    "champion_attack": "",
+    "champion_victory": "",
+    "minion_push": "",
+    "minion_dev": "",
+    "minion_biz": "",
+    "enemy_bug": "",
+    "enemy_phishing": "",
+    "enemy_ransomware": "",
+    "boss_zeroday": "",
+    "turret_enemy": "",
+    "turret_ally": "",
+    "inhibitor": "",
+    "nexus_enemy": "",
+    "nexus_ally": "",
+    "firewall": "",
+    "memory_orb": "",
+    "memory_box": "",
+    "memory_monument": ""
+  },
+  "audio": {
+    "bgm": "",
+    "bgm_boss": "",
+    "voice_welcome": "",
+    "voice_summon": "",
+    "voice_victory": "",
+    "sfx_attack": "",
+    "sfx_skill_q": "",
+    "sfx_skill_w": "",
+    "sfx_skill_r": "",
+    "sfx_turret_destroy": "",
+    "sfx_boss_appear": "",
+    "sfx_victory": ""
+  }
+}
