@@ -36,7 +36,14 @@ function later(fn: () => void, ms: number) {
   return id;
 }
 
-const G = (k: string) => `assets/game/${k}.webp`;
+/**
+ * 게임 이미지의 절대 URL.
+ * CSS 사용자 정의 속성(--img 등)에 상대 경로를 넣으면 var() 가 쓰이는 스타일시트(assets/*.css)
+ * 기준으로 해석되어 /assets/assets/... 로 깨지므로, 문서 기준(document.baseURI)으로 미리 절대화합니다.
+ * 루트 배포(https://x/)와 하위 경로 배포(https://x/sindoh/) 모두 동작합니다.
+ */
+export const assetUrl = (path: string) => new URL(path, document.baseURI).href;
+const G = (k: string) => assetUrl(`assets/game/${k}.webp`);
 /** 일러스트 이미지 + 로딩 실패 시 내장 SVG 대체 */
 function artImg(src: string, fallbackPose: 'idle' | 'victory', cls = '', alt = '') {
   const fb = svgDataUrl(championSvg(fallbackPose));
@@ -210,7 +217,7 @@ function buildTitle() {
 function playIntro(resume: boolean) {
   if (fsm.state !== GameState.TITLE) return;
   fsm.set(GameState.INTRO);
-  const el = h(`<div id="intro" class="screen" style="--map:url(${G('intro_map')})">
+  const el = h(`<div id="intro" class="screen" style="--map:url('${G('intro_map')}')">
     <div class="msg" id="im1">신도의 협곡에 오신 것을 환영합니다.</div>
     <div class="msg gold" id="im2">${runtime.assets.champion.name} 소환 완료</div>
   </div>`);
@@ -326,9 +333,9 @@ function buildHud() {
     <div class="hud-bottom">
       <div class="minimap-wrap"><canvas id="minimap" width="256" height="256"></canvas></div>
       <div class="skills">
-        <button class="skill w" id="skill-w" aria-label="W 보안 강화" style="--img:url(${G('ui_w')})"><span class="face"></span><div class="cd"></div><span class="cdt"></span><span class="key">W</span><span class="lab">보안 강화</span></button>
-        <button class="skill q" id="skill-q" aria-label="Q 긴급 대응" style="--img:url(${G('ui_q')})"><span class="face"></span><div class="cd"></div><span class="cdt"></span><span class="key">Q</span><span class="lab">긴급 대응</span></button>
-        <button class="skill r" id="skill-r" aria-label="R 전 부서 집결!" style="--img:url(${G('ui_r')})"><span class="face"></span><div class="cd"></div><span class="cdt"></span><span class="key">R</span><span class="lab">전 부서 집결!</span></button>
+        <button class="skill w" id="skill-w" aria-label="W 보안 강화" style="--img:url('${G('ui_w')}')"><span class="fallback">${ICONS.w}</span><span class="face"></span><div class="cd"></div><span class="cdt"></span><span class="key">W</span><span class="lab">보안 강화</span></button>
+        <button class="skill q" id="skill-q" aria-label="Q 긴급 대응" style="--img:url('${G('ui_q')}')"><span class="fallback">${ICONS.q}</span><span class="face"></span><div class="cd"></div><span class="cdt"></span><span class="key">Q</span><span class="lab">긴급 대응</span></button>
+        <button class="skill r" id="skill-r" aria-label="R 전 부서 집결!" style="--img:url('${G('ui_r')}')"><span class="fallback">${ICONS.r}</span><span class="face"></span><div class="cd"></div><span class="cdt"></span><span class="key">R</span><span class="lab">전 부서 집결!</span></button>
       </div>
     </div>
     <div class="respawn passthru hidden" id="respawn"><div><div class="t1">GAME MASTER 본진 귀환 중</div><div class="t2" id="respawnT">4</div><div class="t3">레벨과 파괴한 포탑 기록은 그대로 유지됩니다</div></div></div>
@@ -344,6 +351,9 @@ function buildHud() {
     b.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       e.stopPropagation();
+      // 누름 상태 표시 (터치에서는 :active 가 불안정하므로 클래스로 처리)
+      b.classList.add('pressed');
+      later(() => b.classList.remove('pressed'), 140);
       bus.emit('skill', k);
     });
     b.addEventListener('click', (e) => e.stopPropagation());
@@ -441,7 +451,7 @@ function drawMinimapLoop(t: number) {
   const d = miniSource();
   if (!d) return;
   // 라인 팀 표시
-  c.font = 'bold 15px Freesentation, sans-serif';
+  c.font = "600 15px Freesentation, 'Noto Sans KR', sans-serif";
   c.textAlign = 'center';
   for (const l of d.lanes) {
     const x = l.front.x * S,
@@ -506,7 +516,7 @@ function drawMinimapLoop(t: number) {
       ctx.restore();
       if (cap.dead) {
         ctx.fillStyle = '#fff';
-        ctx.font = 'bold 13px sans-serif';
+        ctx.font = '700 13px Freesentation, sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(String(Math.ceil(cap.respawn)), x, y + 5);
       }

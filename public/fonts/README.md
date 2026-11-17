@@ -1,3 +1,4 @@
-# 서체 파일 위치
+# 서체
 
-Freesentation-5Medium.woff2 / Freesentation-7Bold.woff2 / Freesentation-9Black.woff2 를 이 폴더에 넣으면 오프라인에서도 회사 서체가 적용됩니다. 없으면 CDN → 시스템 서체를 사용합니다.
+Freesentation (SIL Open Font License 1.1) — 게임에서 사용하는 500·600·700 굵기만 포함합니다.
+출처: 눈누(noonnu) 배포본. 라이선스 전문: https://openfontlicense.org

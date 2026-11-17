@@ -11,10 +11,18 @@ import { audio } from './audio/audio';
 
 async function main() {
   await loadRuntimeConfig();
+  // 캔버스 텍스트가 대체 서체로 굳지 않도록, 사용하는 굵기를 먼저 로딩 (최대 3초 대기)
   try {
-    await Promise.race([document.fonts?.load('700 16px Freesentation'), new Promise((r) => setTimeout(r, 1200))]);
+    const fonts = document.fonts;
+    if (fonts) {
+      await Promise.race([
+        Promise.all(['500', '600', '700'].map((w) => fonts.load(`${w} 16px Freesentation`, '가A1'))),
+        new Promise((r) => setTimeout(r, 3000)),
+      ]);
+      (window as any).__fontReady = fonts.check('600 16px Freesentation', '가');
+    }
   } catch {
-    /* 서체 없으면 시스템 서체 */
+    /* 서체 로딩 실패 시 시스템 서체로 진행 */
   }
 
   const dpr = Math.min(window.devicePixelRatio || 1, 2);

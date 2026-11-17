@@ -14,6 +14,7 @@ import {
 } from '../world/mapData';
 import { Unit, Kind, Side } from '../entities/Unit';
 import { CAPTAIN_DEFS } from '../config/captains';
+import { gameText, TEAM_TEXT } from '../ui/typography';
 import { LaneManager, LaneRuntime, LaneHost } from '../systems/LaneManager';
 
 type SkillKey = 'q' | 'w' | 'r';
@@ -59,7 +60,7 @@ const capView = (t: string): ViewDef => ({
 const CAPTAIN_KIND: Record<TeamId, Kind> = { push: 'capPush', dev: 'capDev', biz: 'capBiz' };
 const KIND_VIEW: Record<Kind, ViewDef> = {
   player: {
-    tex: 'champ_idle', h: 104, r: 22, hpW: 54, hpY: -116,
+    tex: 'champ_idle', h: 104, r: 22, hpW: 50, hpY: -110,
     anim: { idle: ['champ_idle'], run: ['champ_run_0', 'champ_run_1', 'champ_run_2', 'champ_run_3'], atk: 'champ_atk_2', hit: 'champ_hit' },
   },
   push: mv('push'),
@@ -295,12 +296,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
       u.view.add(this.faceImg);
     }
     // 이름표
-    const name = this.add
-      .text(0, -120, runtime.assets.champion.name, {
-        fontFamily: 'Freesentation, Pretendard, sans-serif', fontSize: '15px', color: '#ffe28a',
-        stroke: '#0b0e17', strokeThickness: 4, fontStyle: 'bold', resolution: 2,
-      })
-      .setOrigin(0.5);
+    const name = gameText(this, 0, -128, runtime.assets.champion.name, 'champion');
     u.view.add(name);
   }
 
@@ -408,10 +404,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
     this.tweens.add({ targets: g, alpha: 0.55, yoyo: true, repeat: -1, duration: 700 });
     const p1 = this.add.image(p.x - dx, p.y - dy + 20, 'firewall').setScale(0.42).setOrigin(0.5, 0.9).setDepth(p.y - dy);
     const p2 = this.add.image(p.x + dx, p.y + dy + 20, 'firewall').setScale(0.42).setOrigin(0.5, 0.9).setDepth(p.y + dy);
-    const label = this.add
-      .text(p.x, p.y - 34, '보안 장벽', { fontFamily: 'Freesentation, sans-serif', fontSize: '13px', color: '#e6d6ff', stroke: '#1b0f33', strokeThickness: 4, resolution: 2 })
-      .setOrigin(0.5)
-      .setDepth(p.y + 1);
+    const label = gameText(this, p.x, p.y - 34, '보안 장벽', 'gate').setDepth(p.y + 1);
     this.gates.set(id, [g, p1, p2, label]);
     this.grid.setCircleBlocked(p, 104, true);
   }
@@ -437,16 +430,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
         this.add.image(p.x, p.y, 'deco_banner').setOrigin(0.5, 0.95).setScale(110 / 260).setDepth(p.y);
       }
     for (const l of LANES) {
-      const t = this.add
-        .text(l.sign.x, l.sign.y, `${l.label} · ${l.teamName}`, {
-          fontFamily: 'Freesentation, Pretendard, sans-serif', fontSize: '22px', color: '#ffffff', fontStyle: 'bold',
-          stroke: '#0b1a33', strokeThickness: 6, resolution: 2,
-        })
-        .setOrigin(0.5)
-        .setDepth(3);
-      t.setShadow(0, 3, 'rgba(0,0,0,0.5)', 4);
-      const col = '#' + TEAM_COLOR[l.team].toString(16).padStart(6, '0');
-      t.setColor(col);
+      gameText(this, l.sign.x, l.sign.y, `${l.label} · ${l.teamName}`, 'sign', { color: TEAM_TEXT[l.team] }).setDepth(3);
     }
   }
 
@@ -498,13 +482,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
       u.setHpColor(0x3d9bff);
       u.refreshHp();
       // 이름표 + 패시브 범위 표시
-      const tag = this.add
-        .text(0, -104, def.name, {
-          fontFamily: 'Freesentation, Pretendard, sans-serif', fontSize: '14px', color: '#ffffff', fontStyle: 'bold',
-          stroke: '#0b1a45', strokeThickness: 4, resolution: 2,
-        })
-        .setOrigin(0.5);
-      tag.setBackgroundColor('rgba(19,40,95,0.75)').setPadding(5, 1, 5, 1);
+      const tag = gameText(this, 0, -108, def.name, 'captain');
       const aura = this.add.image(0, 2, 'fx_ring').setTint(TEAM_COLOR[team]).setAlpha(0.28);
       aura.setDisplaySize(BALANCE.captains.passiveRadius * 2, BALANCE.captains.passiveRadius * 1.24);
       u.view.addAt(aura, 0);
@@ -647,9 +625,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
     u.expireAt = this.simTime + duration;
     u.refreshHp();
     this.lightPillar(pos.x, pos.y, TEAM_COLOR[team]);
-    const tag = this.add
-      .text(0, -80, TEAM_NAME[team], { fontFamily: 'Freesentation, sans-serif', fontSize: '12px', color: '#fff', stroke: '#0b1a33', strokeThickness: 4, resolution: 2 })
-      .setOrigin(0.5);
+    const tag = gameText(this, 0, -80, TEAM_NAME[team], 'rally');
     u.view.add(tag);
     return u;
   }
@@ -1089,12 +1065,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
     const shadow = this.add.image(0, 0, 'fx_shadow').setDisplaySize(50, 20);
     const img = this.add.image(0, 4, key).setOrigin(0.5, 0.92);
     img.setScale(90 / img.height).setFlipX(x > this.player.x);
-    const tag = this.add
-      .text(0, -112, CAPTAIN_DEFS[team].name, {
-        fontFamily: 'Freesentation, Pretendard, sans-serif', fontSize: '15px', color: '#ffe9a3', fontStyle: 'bold',
-        stroke: '#0b1a45', strokeThickness: 5, resolution: 2,
-      })
-      .setOrigin(0.5);
+    const tag = gameText(this, 0, -114, CAPTAIN_DEFS[team].name, 'captain', { fontSize: '18px' });
     const c = this.add.container(x, y, [shadow, img, tag]).setDepth(y).setAlpha(0);
     this.tweens.add({ targets: c, alpha: 1, duration: 200 });
     this.playFrames(x, y + 8, [`cap_${team}_revive`], { height: 120, hold: 150, depth: y + 1, originY: 0.95 });
@@ -1695,7 +1666,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
       bus.emit('tut:attacked');
       this.floatText(t.x + (Math.random() - 0.5) * 20, t.y - (t.isStructure ? t.radius * 2.2 : 60), String(Math.round(real)), '#ffe9a8', 15);
     } else if (t === this.player) {
-      this.floatText(t.x + (Math.random() - 0.5) * 20, t.y - 90, '-' + dmg, '#ff7b8f', 14);
+      this.floatText(t.x + (Math.random() - 0.5) * 20, t.y - 90, '-' + dmg, '#ffa3b0', 14);
       if (dmg >= 60) this.cameras.main.shake(90, 0.004);
       bus.emit('player:hit');
     }
@@ -2132,10 +2103,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
 
   floatText(x: number, y: number, text: string, color: string, size: number) {
     if (this.dmgTexts.length > 24) return;
-    const t = this.add
-      .text(x, y, text, { fontFamily: 'Freesentation, Pretendard, sans-serif', fontSize: size + 'px', color, fontStyle: 'bold', stroke: '#0b0e17', strokeThickness: 4, resolution: 2 })
-      .setOrigin(0.5)
-      .setDepth(6000);
+    const t = gameText(this, x, y, text, 'float', { fontSize: Math.min(Math.round(size * 1.3), 26) + 'px', color, fontStyle: size >= 18 ? '700' : '600' }).setDepth(6000);
     this.dmgTexts.push(t);
     this.tweens.add({
       targets: t, y: y - 36, alpha: 0, duration: 750, ease: 'Cubic.easeOut',
@@ -2269,7 +2237,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
   }
 
   bubble(u: Unit, text: string, secs: number) {
-    const t = this.add.text(0, 0, text, { fontFamily: 'Freesentation, Pretendard, sans-serif', fontSize: '15px', color: '#14213d', fontStyle: 'bold', resolution: 2 }).setOrigin(0.5);
+    const t = gameText(this, 0, 0, text, 'bubble');
     const w = t.width + 22,
       h = t.height + 12;
     const g = this.add.graphics();
