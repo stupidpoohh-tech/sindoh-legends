@@ -614,3 +614,101 @@ body { -webkit-font-smoothing: antialiased; }
 /* 승리 화면: 색종이가 버튼 글자를 가리지 않도록 */
 #victory .confetti { z-index: 0; }
 #victory .acts, #victory .l1, #victory .l2, #victory .l3, #victory .vic, #victory img.champ { z-index: 2; }
+
+/* ═══════════════ v4: 가로 화면 전용 HUD ═══════════════
+   좌측 상단: 미니맵 + 플레이어 정보·목표·패시브 / 우측 상단: 일시정지
+   우측 하단: R(모서리 큰 버튼) + W·Q 호 배치 / 하단 중앙: 안내 / 좌측 하단: 튜토리얼 */
+#hud {
+  --mm: clamp(108px, 33vh, 196px);   /* 미니맵 */
+  --rs: clamp(78px, 23vh, 116px);    /* R 버튼 */
+  --ss: clamp(58px, 16.5vh, 84px);   /* Q·W 버튼 */
+}
+.hud-tl {
+  position: absolute; top: calc(6px + var(--safe-t)); left: calc(6px + var(--safe-l));
+  display: flex; align-items: flex-start; gap: 8px; pointer-events: none;
+}
+.minimap-wrap { pointer-events: auto; margin: 0; }
+#minimap, #hud #minimap { width: var(--mm); height: var(--mm); }
+.hud-info { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; width: clamp(226px, 30vw, 330px); pointer-events: none; }
+.hud-info .player-card { flex: none; width: 100%; max-width: none; }
+.hud-info .objective { order: 0; max-width: 100%; font-size: clamp(12.5px, 3.4vh, 15px); }
+.hud-info .buffs { order: 0; flex-basis: auto; }
+#pauseBtn { position: absolute; top: calc(8px + var(--safe-t)); right: calc(8px + var(--safe-r)); left: auto; width: 48px; height: 48px; margin: 0; }
+
+.boss-bar { top: calc(12px + var(--safe-t)); left: auto; right: calc(68px + var(--safe-r)); transform: none; width: min(34vw, 380px); }
+.toast { top: auto; bottom: calc(12px + var(--safe-b)); left: 50%; transform: translateX(-50%); max-width: min(42vw, 460px); }
+.tutorial { top: auto; left: calc(10px + var(--safe-l)); bottom: calc(10px + var(--safe-b)); transform: none; width: min(40vw, 380px); }
+
+.skills {
+  position: absolute; right: calc(14px + var(--safe-r)); bottom: calc(12px + var(--safe-b));
+  display: block; width: calc(var(--rs) + var(--ss) * 2 + 34px); height: calc(var(--rs) + 34px); pointer-events: none;
+}
+.skills .skill { position: absolute; margin: 0; grid-area: auto; }
+.skills .skill.r { right: 0; bottom: 0; width: var(--rs); height: var(--rs); }
+.skills .skill.w { right: calc(var(--rs) + 10px); bottom: calc(var(--rs) * 0.5); width: var(--ss); height: var(--ss); }
+.skills .skill.q { right: calc(var(--rs) + var(--ss) + 22px); bottom: 0; width: var(--ss); height: var(--ss); }
+.skills .skill .lab { font-size: clamp(11px, 3vh, 12.5px); }
+.skills .skill .cdt { font-size: clamp(18px, 5.4vh, 24px); }
+
+/* 세로 화면 안내 (휴대폰을 세로로 들었을 때) */
+.rotate-guard {
+  position: fixed; inset: 0; z-index: 100; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  padding: 24px; text-align: center; background: radial-gradient(ellipse at 50% 40%, #16306e, #050d1f 70%); color: #fff;
+}
+.rotate-guard b { font-size: 21px; font-weight: 700; }
+.rotate-guard small { font-size: 14px; font-weight: 500; color: #b4c4d8; line-height: 1.5; }
+.rg-phone { width: 64px; height: 108px; border: 4px solid #e9c46a; border-radius: 14px; position: relative; margin-bottom: 18px; animation: rgTurn 2.4s ease-in-out infinite; }
+.rg-phone i { position: absolute; left: 50%; bottom: 6px; width: 16px; height: 4px; margin-left: -8px; border-radius: 2px; background: #e9c46a; }
+@keyframes rgTurn { 0%, 25% { transform: rotate(0); } 55%, 100% { transform: rotate(-90deg); } }
+@media (orientation: portrait) and (max-width: 900px) {
+  .rotate-guard { display: flex; }
+}
+/* 하단 안내는 스킬 묶음 왼쪽의 남은 공간 가운데에 */
+#hud { --skw: calc(var(--rs) + var(--ss) * 2 + 52px); }
+.toast { left: calc((100vw - var(--skw)) / 2); max-width: min(calc(100vw - var(--skw) - 32px), 460px); }
+/* 영상 화면: 가로(낮은 화면)에서 본문이 하단 버튼을 덮지 않도록 */
+#video .vstage { overflow: hidden; }
+#video .vbar, #video .vfoot { position: relative; z-index: 2; flex: none; }
+@media (max-height: 520px) {
+  .vplaceholder { padding: 8px 16px; }
+  .vplaceholder .big { width: 56px; height: 56px; margin-bottom: 8px; border-radius: 16px; }
+  .vplaceholder .big svg { width: 28px; height: 28px; }
+  .vplaceholder h3 { font-size: 17px; margin-bottom: 4px; }
+  .vplaceholder p { font-size: 13px; line-height: 1.45; }
+  .vbar { padding-top: calc(6px + var(--safe-t)); padding-bottom: 4px; }
+  .vfoot { padding-top: 6px; padding-bottom: calc(8px + var(--safe-b)); }
+  .vfoot .btn { min-height: 46px; }
+  /* 모달 패널도 낮은 화면에서 스크롤 가능 높이 유지 */
+  .panel { max-height: calc(100vh - 24px); }
+}
+/* 가로(낮은 화면) 모달: 넓게 펼쳐 한 화면에 */
+@media (orientation: landscape) and (max-height: 520px) {
+  .modal { padding: calc(8px + var(--safe-t)) calc(12px + var(--safe-r)) calc(8px + var(--safe-b)) calc(12px + var(--safe-l)); }
+  .panel { width: min(94vw, 680px); padding: 0 6px; }
+  .panel h2 { font-size: 21px; margin-bottom: 2px; }
+  .panel .sub { margin-bottom: 10px; }
+  #pauseModal .stack { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  #pauseModal .stack .btn { min-height: 46px; }
+  #pauseModal .stack > .btn.primary { grid-column: 1 / -1; }
+  #pauseModal .toggle-row { display: contents; }
+  .archive-hero { max-height: 84px; object-position: center 35%; margin-bottom: 8px; }
+  .archive-list { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .vcard { min-height: 64px; padding: 8px; }
+  .vcard .th { width: 84px; }
+  .memory-panel .orb { width: 56px; height: 56px; margin-bottom: 6px; }
+  #settingsModal .stack .btn, #memoryModal .stack .btn { min-height: 46px; }
+}
+/* 가로(낮은 화면) 승리 화면: 버튼까지 한 화면에 */
+@media (orientation: landscape) and (max-height: 520px) {
+  #victory { gap: 2px; padding-top: calc(10px + var(--safe-t)); padding-bottom: calc(10px + var(--safe-b)); }
+  #victory .vic { font-size: clamp(44px, 17vh, 86px); line-height: 1; }
+  #victory img.champ { display: block; position: absolute; left: calc(1vw + var(--safe-l)); bottom: 0; height: min(46vh, 210px); z-index: 1; }
+  #victory .l1 { font-size: clamp(12px, 3.6vh, 16px); }
+  #victory .l2 { font-size: clamp(14px, 4.4vh, 18px); margin-top: 4px; }
+  #victory .l3 { font-size: clamp(12.5px, 3.8vh, 15px); margin-top: 0; }
+  #victory .acts { margin-top: 10px; width: min(60vw, 580px); gap: 8px; }
+  #victory .acts .btn { min-height: 46px; font-size: 16px; }
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  #victory .acts .btn { white-space: nowrap; padding: 0 12px; font-size: 15px; gap: 6px; }
+}

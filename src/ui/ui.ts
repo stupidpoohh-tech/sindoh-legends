@@ -73,6 +73,7 @@ export function initUi(h0: UiHooks) {
 
   buildTitle();
   buildHud();
+  buildRotateGuard();
   bus.on('loading', (v: number) => {
     const bar = $('#title .loading-bar i');
     if (bar) bar.style.width = Math.round(v * 100) + '%';
@@ -133,6 +134,43 @@ function onState(next: GameState) {
   const inGame = running || next === GameState.PAUSED || ((next === GameState.ARCHIVE || next === GameState.VIDEO) && fsm.baseState !== GameState.TITLE && fsm.baseState !== GameState.VICTORY);
   $('#hud').classList.toggle('hidden', !inGame);
   if (next === GameState.BOSS_BATTLE || next === GameState.NEXUS_BATTLE || next === GameState.PLAYING) $('#tutorial')?.classList.add('hidden');
+}
+
+/* ═════════════ 가로 화면 전용 ═════════════ */
+/** 세로로 들고 있는 휴대폰에서는 안내 화면을 덮고, 게임 중이면 자동 일시정지 */
+const PORTRAIT_MQ = '(orientation: portrait) and (max-width: 900px)';
+function buildRotateGuard() {
+  root.appendChild(
+    h(`<div id="rotateGuard" class="rotate-guard">
+      <div class="rg-phone"><i></i></div>
+      <b>휴대폰을 가로로 돌려 주세요</b>
+      <small>SINDOH LEGENDS는 가로 화면에서 플레이합니다.</small>
+    </div>`),
+  );
+  const mq = window.matchMedia(PORTRAIT_MQ);
+  const onChange = () => {
+    if (mq.matches && fsm.isRunning) openPause();
+  };
+  mq.addEventListener?.('change', onChange);
+  window.addEventListener('orientationchange', () => setTimeout(onChange, 300));
+}
+
+/** 시작 버튼(사용자 입력) 안에서 호출: 안드로이드 크롬은 전체화면 + 가로 고정, 미지원 기기는 그대로 진행 */
+function requestLandscape() {
+  const coarse = window.matchMedia('(pointer: coarse)').matches;
+  if (!coarse) return;
+  const el = document.documentElement as any;
+  const lock = () => (screen.orientation as any)?.lock?.('landscape').catch(() => {});
+  try {
+    const req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (req && !document.fullscreenElement) {
+      const r = req.call(el, { navigationUI: 'hide' });
+      if (r && typeof r.then === 'function') r.then(lock).catch(() => {});
+      else lock();
+    } else lock();
+  } catch {
+    /* iOS Safari 등: 전체화면·방향 고정 미지원 → 안내 화면으로 대응 */
+  }
 }
 
 /* ═════════════ 타이틀 ═════════════ */
@@ -199,11 +237,13 @@ function buildTitle() {
     }),
   );
   $('#startBtn').onclick = () => {
+    requestLandscape();
     audio.unlock();
     audio.play('click');
     playIntro(false);
   };
   $('#continueBtn').onclick = () => {
+    requestLandscape();
     audio.unlock();
     audio.play('click');
     playIntro(true);
@@ -302,19 +342,24 @@ function buildHud() {
   const el = h(`
   <div id="hud" class="hidden">
     <div class="vignette passthru" id="vignette"></div>
-    <div class="hud-top">
-      <div class="player-card passthru">
-        <div class="portrait"><img src="${G('ui_portrait')}" alt="" onerror="this.onerror=null;this.src='${svgDataUrl(championSvg('idle'))}'"><span class="lv" id="lvl">1</span></div>
-        <div class="bars">
-          <div class="nm">${runtime.assets.champion.name}<b id="hpText"></b></div>
-          <div class="bar hp" id="hpBar"><i></i></div>
-          <div class="bar xp" id="xpBar"><i></i></div>
+    <!-- 좌측 상단: 미니맵 + 플레이어 정보·목표·패시브 -->
+    <div class="hud-tl">
+      <div class="minimap-wrap"><canvas id="minimap" width="256" height="256"></canvas></div>
+      <div class="hud-info">
+        <div class="player-card passthru">
+          <div class="portrait"><img src="${G('ui_portrait')}" alt="" onerror="this.onerror=null;this.src='${svgDataUrl(championSvg('idle'))}'"><span class="lv" id="lvl">1</span></div>
+          <div class="bars">
+            <div class="nm">${runtime.assets.champion.name}<b id="hpText"></b></div>
+            <div class="bar hp" id="hpBar"><i></i></div>
+            <div class="bar xp" id="xpBar"><i></i></div>
+          </div>
         </div>
+        <div class="objective passthru" id="objective"></div>
+        <div class="buffs passthru" id="buffs"></div>
       </div>
-      <div class="objective passthru" id="objective"></div>
-      <div class="buffs passthru" id="buffs"></div>
-      <button class="img-btn" id="pauseBtn" aria-label="일시정지"><img src="${G('ui_pause')}" alt=""></button>
     </div>
+    <!-- 우측 상단: 일시정지 -->
+    <button class="img-btn" id="pauseBtn" aria-label="일시정지"><img src="${G('ui_pause')}" alt=""></button>
     <div class="boss-bar passthru hidden" id="bossBar">
       <div class="bn">ZERO DAY</div>
       <div class="bar"><i></i><div class="floor"></div></div>
@@ -330,14 +375,12 @@ function buildHud() {
       <div class="final">전 부서 집결!</div>
     </div>
     <div class="boss-intro passthru hidden" id="bossIntro"><div><div class="bi">ZERO DAY</div><div class="bs">보안 취약점의 화신</div></div></div>
-    <div class="hud-bottom">
-      <div class="minimap-wrap"><canvas id="minimap" width="256" height="256"></canvas></div>
-      <div class="skills">
+    <!-- 우측 하단: 스킬 (R 을 모서리 큰 버튼으로, Q·W 를 호 모양으로 배치) -->
+    <div class="skills">
         <button class="skill w" id="skill-w" aria-label="W 보안 강화" style="--img:url('${G('ui_w')}')"><span class="fallback">${ICONS.w}</span><span class="face"></span><div class="cd"></div><span class="cdt"></span><span class="key">W</span><span class="lab">보안 강화</span></button>
         <button class="skill q" id="skill-q" aria-label="Q 긴급 대응" style="--img:url('${G('ui_q')}')"><span class="fallback">${ICONS.q}</span><span class="face"></span><div class="cd"></div><span class="cdt"></span><span class="key">Q</span><span class="lab">긴급 대응</span></button>
         <button class="skill r" id="skill-r" aria-label="R 전 부서 집결!" style="--img:url('${G('ui_r')}')"><span class="fallback">${ICONS.r}</span><span class="face"></span><div class="cd"></div><span class="cdt"></span><span class="key">R</span><span class="lab">전 부서 집결!</span></button>
       </div>
-    </div>
     <div class="respawn passthru hidden" id="respawn"><div><div class="t1">GAME MASTER 본진 귀환 중</div><div class="t2" id="respawnT">4</div><div class="t3">레벨과 파괴한 포탑 기록은 그대로 유지됩니다</div></div></div>
   </div>`);
   root.appendChild(el);

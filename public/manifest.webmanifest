@@ -1,0 +1,9 @@
+{
+  "name": "SINDOH LEGENDS",
+  "short_name": "SINDOH LEGENDS",
+  "start_url": ".",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#000a14",
+  "theme_color": "#000a14"
+}
