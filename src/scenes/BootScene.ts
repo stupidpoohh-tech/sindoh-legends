@@ -1,79 +1,75 @@
 import Phaser from 'phaser';
 import * as S from '../art/svgs';
 import { runtime } from '../config/runtime';
+import { SPRITE_KEYS } from '../config/spriteList';
 import { bus } from '../core/events';
 
 /**
- * 자산 레지스트리: 키 → 내장 SVG(대체 자산) + 표시 크기.
- * assets.json 에 경로가 있으면 그 파일을 먼저 시도하고, 실패하면 내장 SVG를 사용합니다.
+ * 자산 로딩.
+ * 1) public/config/assets.json 의 images[키] 경로 (사용자 교체)
+ * 2) public/assets/game/<키>.webp (일러스트 스프라이트, tools/build_sprites.py 로 생성)
+ * 3) 둘 다 실패하면 내장 SVG 대체 그래픽
  */
-const RES = 2; // 확대해도 선명하도록 2배 해상도로 래스터화
-export const ASSET_REGISTRY: Record<string, { svg: () => string; w: number; h: number }> = {
-  champion_idle: { svg: () => S.championSvg('idle'), w: 128, h: 160 },
-  champion_attack: { svg: () => S.championSvg('attack'), w: 128, h: 160 },
-  champion_victory: { svg: () => S.championSvg('victory'), w: 128, h: 160 },
-  minion_push: { svg: S.minionPushSvg, w: 72, h: 80 },
-  minion_dev: { svg: S.minionDevSvg, w: 72, h: 80 },
-  minion_biz: { svg: S.minionBizSvg, w: 76, h: 80 },
-  enemy_bug: { svg: S.bugSvg, w: 72, h: 60 },
-  enemy_phishing: { svg: S.phishingSvg, w: 84, h: 72 },
-  enemy_ransomware: { svg: S.ransomwareSvg, w: 96, h: 104 },
-  boss_zeroday: { svg: S.zeroDaySvg, w: 160, h: 190 },
-  turret_enemy: { svg: () => S.turretSvg(false), w: 110, h: 150 },
-  turret_ally: { svg: () => S.turretSvg(true), w: 110, h: 150 },
-  inhibitor: { svg: S.inhibitorSvg, w: 90, h: 110 },
-  nexus_enemy: { svg: () => S.nexusSvg(false), w: 220, h: 220 },
-  nexus_ally: { svg: () => S.nexusSvg(true), w: 220, h: 220 },
-  firewall: { svg: S.firewallSvg, w: 70, h: 100 },
+const RES = 2;
+type Svg = { svg: () => string; w: number; h: number };
+const champ = (p: 'idle' | 'attack' | 'victory'): Svg => ({ svg: () => S.championSvg(p), w: 128, h: 160 });
+const push: Svg = { svg: S.minionPushSvg, w: 72, h: 80 };
+const dev: Svg = { svg: S.minionDevSvg, w: 72, h: 80 };
+const biz: Svg = { svg: S.minionBizSvg, w: 76, h: 80 };
+const FALLBACK_RULES: [RegExp, Svg][] = [
+  [/^champ_victory$/, champ('victory')],
+  [/^champ_atk/, champ('attack')],
+  [/^champ_/, champ('idle')],
+  [/^m_push/, push],
+  [/^m_dev/, dev],
+  [/^m_biz/, biz],
+  [/^e_bug/, { svg: S.bugSvg, w: 72, h: 60 }],
+  [/^e_phish/, { svg: S.phishingSvg, w: 84, h: 72 }],
+  [/^e_ransom/, { svg: S.ransomwareSvg, w: 96, h: 104 }],
+  [/^boss_/, { svg: S.zeroDaySvg, w: 160, h: 190 }],
+  [/^s_ally_turret/, { svg: () => S.turretSvg(true), w: 110, h: 150 }],
+  [/^s_turret/, { svg: () => S.turretSvg(false), w: 110, h: 150 }],
+  [/^s_inhib/, { svg: S.inhibitorSvg, w: 90, h: 110 }],
+  [/^s_ally_nexus/, { svg: () => S.nexusSvg(true), w: 220, h: 220 }],
+  [/^s_nexus/, { svg: () => S.nexusSvg(false), w: 220, h: 220 }],
+  [/^s_firewall/, { svg: S.firewallSvg, w: 70, h: 100 }],
+];
+/** 일러스트가 없는 오브젝트(기억 오브젝트)는 SVG 사용 */
+const SVG_ONLY: Record<string, Svg> = {
   memory_orb: { svg: S.memoryOrbSvg, w: 64, h: 64 },
   memory_box: { svg: S.memoryBoxSvg, w: 72, h: 64 },
   memory_monument: { svg: S.memoryMonumentSvg, w: 72, h: 100 },
 };
 
 export class BootScene extends Phaser.Scene {
+  private failed = new Set<string>();
   constructor() {
     super('Boot');
   }
 
   preload() {
     const overrides = runtime.assets.images || {};
-    const failed = new Set<string>();
     this.load.on('progress', (v: number) => bus.emit('loading', v * 0.9));
-    this.load.on('loaderror', (file: Phaser.Loader.File) => failed.add(file.key));
-
-    // 1차: 사용자가 지정한 교체 이미지 시도
-    for (const key of Object.keys(ASSET_REGISTRY)) {
-      const url = overrides[key];
-      if (url) this.load.image(key, url);
-    }
-    if (overrides.championFace) this.load.image('champion_face', overrides.championFace);
-
-    this.failed = failed;
+    this.load.on('loaderror', (file: Phaser.Loader.File) => this.failed.add(file.key));
+    for (const key of SPRITE_KEYS) this.load.image(key, overrides[key] || `assets/game/${key}.webp`);
+    this.load.image('tile_grass', overrides.tile_grass || 'assets/game/tile_grass.webp');
+    for (const key of Object.keys(SVG_ONLY)) if (overrides[key]) this.load.image(key, overrides[key]);
   }
 
-  private failed = new Set<string>();
-
   create() {
-    // 2차: 교체 이미지가 없거나 실패한 키는 내장 SVG로 대체
-    const overrides = runtime.assets.images || {};
-    const failed = this.failed;
     let pending = 0;
-    for (const [key, a] of Object.entries(ASSET_REGISTRY)) {
-      if (this.textures.exists(key) && !failed.has(key)) continue;
+    const svg = (key: string, a: Svg) => {
       if (this.textures.exists(key)) this.textures.remove(key);
-      pending++;
       this.load.svg(key, S.svgDataUrl(a.svg()), { width: a.w * RES, height: a.h * RES });
+      pending++;
+    };
+    for (const key of SPRITE_KEYS) {
+      if (this.textures.exists(key) && !this.failed.has(key)) continue;
+      const rule = FALLBACK_RULES.find(([re]) => re.test(key));
+      if (rule) svg(key, rule[1]);
     }
-    if (overrides.championFace && this.textures.exists('champion_face') && !failed.has('champion_face')) {
-      // 얼굴 교체 시: 얼굴 없는 몸체로 다시 그림
-      for (const pose of ['idle', 'attack', 'victory'] as const) {
-        const key = 'champion_' + pose;
-        if (overrides[key] && !failed.has(key)) continue;
-        if (this.textures.exists(key)) this.textures.remove(key);
-        this.load.svg(key, S.svgDataUrl(S.championSvg(pose, false)), { width: 128 * RES, height: 160 * RES });
-        pending++;
-      }
-    }
+    for (const [key, a] of Object.entries(SVG_ONLY)) if (!this.textures.exists(key) || this.failed.has(key)) svg(key, a);
+    if (this.failed.size) console.warn('[assets] 대체 그래픽 사용:', [...this.failed].join(', '));
     const finish = () => {
       this.makeFxTextures();
       bus.emit('loading', 1);

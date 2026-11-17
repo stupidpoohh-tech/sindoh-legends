@@ -3,7 +3,7 @@ import type { LaneRuntime } from '../systems/LaneManager';
 
 export type Side = 'ally' | 'enemy';
 export type Kind =
-  | 'player' | 'push' | 'dev' | 'biz'
+  | 'player' | 'push' | 'pushR' | 'dev' | 'devC' | 'biz' | 'bizC'
   | 'bug' | 'phishing' | 'ransomware' | 'boss'
   | 'turret' | 'allyTurret' | 'inhibitor' | 'firewall' | 'nexus' | 'allyNexus';
 
@@ -64,6 +64,12 @@ export class Unit {
   extra: Phaser.GameObjects.GameObject[] = [];
   baseScale = 1;
   spriteBaseY = 0;
+  /** 프레임 애니메이션 텍스처 키 */
+  anim: { idle: string[]; run: string[]; atk?: string; hit?: string } | null = null;
+  /** 프레임마다 크기가 다른 이미지(보스·구조물)는 표시 높이로 정규화 */
+  displayH = 0;
+  normFrames = false;
+  curTex = '';
 
   constructor(
     scene: Phaser.Scene,
@@ -84,6 +90,8 @@ export class Unit {
     const sw = opts.shadowW ?? opts.radius * 2.2;
     this.shadow.setDisplaySize(sw, sw * 0.4);
     this.sprite = scene.add.image(0, 0, opts.texture).setOrigin(0.5, 0.92);
+    this.displayH = opts.displayH;
+    this.curTex = opts.texture;
     this.baseScale = opts.displayH / (this.sprite.height || opts.displayH);
     this.sprite.setScale(this.baseScale);
     this.spriteBaseY = 4;
@@ -98,6 +106,14 @@ export class Unit {
       this.hpFill = scene.add.rectangle(-opts.hpWidth / 2, y, opts.hpWidth, 5, color).setOrigin(0, 0.5);
       this.view.add([this.hpBg, this.hpFill]);
     }
+  }
+
+  /** 텍스처 교체 (normFrames 이면 표시 높이 유지) */
+  setTex(key: string) {
+    if (key === this.curTex || !this.sprite.scene.textures.exists(key)) return;
+    this.curTex = key;
+    this.sprite.setTexture(key);
+    if (this.normFrames) this.baseScale = this.displayH / (this.sprite.height || this.displayH);
   }
 
   setHpColor(c: number) {

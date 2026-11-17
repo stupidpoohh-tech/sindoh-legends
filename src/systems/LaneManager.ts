@@ -136,8 +136,7 @@ export class LaneManager {
     const count = this.host.units.filter((u) => u.alive && !u.isStructure).length;
     if (count > cap - 6) return;
     lane.waveCount++;
-    const allyKinds: Kind[] =
-      lane.def.team === 'push' ? ['push', 'push', 'push'] : lane.def.team === 'dev' ? ['dev', 'dev', 'dev'] : ['biz', 'biz'];
+    const allyKinds = [...BALANCE.allyWaves[lane.def.team]] as Kind[];
     const enemyKinds: Kind[] = ['bug', 'bug', 'phishing'];
     const empowered = lane.inhibAlive;
     if (empowered && lane.waveCount % BALANCE.enemyUnits.ransomwareEveryWaves === 0) enemyKinds.push('ransomware');

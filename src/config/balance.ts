@@ -57,10 +57,20 @@ export const BALANCE = {
     dormantDrift: 12,
   },
 
+  /** 팀별 미니언 (추진팀: 근접 돌격·원거리 지원 / 개발팀: 원거리 기술·대포 / 사업팀: 근접 지원·복합기 포격) */
   allyUnits: {
     push: { hp: 470, damage: 19, interval: 1.0, range: 48, speed: 88, armor: 0.78, aggro: 210 },
+    pushR: { hp: 290, damage: 21, interval: 1.1, range: 165, speed: 88, armor: 1, aggro: 220 },
     dev: { hp: 300, damage: 24, interval: 1.1, range: 175, speed: 88, armor: 1, aggro: 220 },
-    biz: { hp: 420, damage: 46, interval: 1.6, range: 205, speed: 82, armor: 0.9, aggro: 230 },
+    devC: { hp: 380, damage: 42, interval: 1.6, range: 200, speed: 80, armor: 0.9, aggro: 230 },
+    biz: { hp: 430, damage: 21, interval: 1.0, range: 50, speed: 86, armor: 0.85, aggro: 210 },
+    bizC: { hp: 420, damage: 46, interval: 1.6, range: 205, speed: 82, armor: 0.9, aggro: 230 },
+  },
+  /** 라인별 아군 웨이브 구성 */
+  allyWaves: {
+    push: ['push', 'push', 'pushR'],
+    dev: ['dev', 'dev', 'devC'],
+    biz: ['biz', 'biz', 'bizC'],
   },
 
   enemyUnits: {

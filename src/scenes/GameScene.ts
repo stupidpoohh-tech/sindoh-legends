@@ -37,22 +37,41 @@ interface Projectile {
   dead?: boolean;
 }
 
-const KIND_VIEW: Record<Kind, { tex: string; h: number; r: number; hpW?: number; hpY?: number; shadowW?: number }> = {
-  player: { tex: 'champion_idle', h: 96, r: 22, hpW: 54, hpY: -106 },
-  push: { tex: 'minion_push', h: 50, r: 16, hpW: 32, hpY: -58 },
-  dev: { tex: 'minion_dev', h: 50, r: 16, hpW: 32, hpY: -58 },
-  biz: { tex: 'minion_biz', h: 52, r: 16, hpW: 32, hpY: -58 },
-  bug: { tex: 'enemy_bug', h: 36, r: 16, hpW: 30, hpY: -44 },
-  phishing: { tex: 'enemy_phishing', h: 44, r: 16, hpW: 30, hpY: -66, shadowW: 26 },
-  ransomware: { tex: 'enemy_ransomware', h: 68, r: 24, hpW: 48, hpY: -78 },
-  boss: { tex: 'boss_zeroday', h: 160, r: 42, shadowW: 110 },
-  turret: { tex: 'turret_enemy', h: 124, r: 44, hpW: 80, hpY: -136, shadowW: 110 },
-  allyTurret: { tex: 'turret_ally', h: 118, r: 44, shadowW: 104 },
-  inhibitor: { tex: 'inhibitor', h: 86, r: 34, hpW: 64, hpY: -98, shadowW: 90 },
-  firewall: { tex: 'firewall', h: 84, r: 28, hpW: 56, hpY: -96, shadowW: 70 },
-  nexus: { tex: 'nexus_enemy', h: 200, r: 84, hpW: 130, hpY: -212, shadowW: 210 },
-  allyNexus: { tex: 'nexus_ally', h: 160, r: 70, shadowW: 170 },
+type ViewDef = { tex: string; h: number; r: number; hpW?: number; hpY?: number; shadowW?: number; norm?: boolean; anim?: Unit['anim'] };
+const minionAnim = (k: string): Unit['anim'] => ({
+  idle: [`m_${k}_idle`],
+  run: [`m_${k}_run_0`, `m_${k}_run_1`, `m_${k}_run_2`, `m_${k}_run_1`],
+  atk: `m_${k}_atk`,
+  hit: `m_${k}_hit`,
+});
+const mv = (k: string, h = 58): ViewDef => ({ tex: `m_${k}_idle`, h, r: 16, hpW: 32, hpY: -h - 8, anim: minionAnim(k) });
+const KIND_VIEW: Record<Kind, ViewDef> = {
+  player: {
+    tex: 'champ_idle', h: 104, r: 22, hpW: 54, hpY: -116,
+    anim: { idle: ['champ_idle'], run: ['champ_run_0', 'champ_run_1', 'champ_run_2', 'champ_run_3'], atk: 'champ_atk_2', hit: 'champ_hit' },
+  },
+  push: mv('push'),
+  pushR: mv('pushR'),
+  dev: mv('dev'),
+  devC: mv('devC', 54),
+  biz: mv('biz'),
+  bizC: mv('bizC', 54),
+  bug: { tex: 'e_bug_0', h: 42, r: 16, hpW: 30, hpY: -50, anim: { idle: ['e_bug_0', 'e_bug_1'], run: ['e_bug_0', 'e_bug_1', 'e_bug_2', 'e_bug_1'], atk: 'e_bug_2' } },
+  phishing: { tex: 'e_phish_0', h: 44, r: 16, hpW: 30, hpY: -70, shadowW: 26, anim: { idle: ['e_phish_0', 'e_phish_1'], run: ['e_phish_0', 'e_phish_1'], atk: 'e_phish_2' } },
+  ransomware: { tex: 'e_ransom_0', h: 70, r: 24, hpW: 48, hpY: -80, anim: { idle: ['e_ransom_0'], run: ['e_ransom_0', 'e_ransom_1'], atk: 'e_ransom_2' } },
+  boss: { tex: 'boss_main', h: 170, r: 42, shadowW: 120, norm: true, anim: { idle: ['boss_main'], run: ['boss_main', 'boss_idle'], atk: 'boss_slash' } },
+  turret: { tex: 's_turret', h: 140, r: 44, hpW: 80, hpY: -150, shadowW: 120, norm: true },
+  allyTurret: { tex: 's_ally_turret', h: 140, r: 44, shadowW: 120, norm: true },
+  inhibitor: { tex: 's_inhib', h: 100, r: 36, hpW: 64, hpY: -110, shadowW: 110, norm: true },
+  firewall: { tex: 's_firewall', h: 92, r: 28, hpW: 56, hpY: -104, shadowW: 76, norm: true },
+  nexus: { tex: 's_nexus', h: 200, r: 84, hpW: 130, hpY: -212, shadowW: 220, norm: true },
+  allyNexus: { tex: 's_ally_nexus', h: 190, r: 70, shadowW: 180, norm: true },
 };
+const RUIN: Partial<Record<Kind, string>> = { turret: 's_turret_ruin', inhibitor: 's_inhib_ruin', firewall: 's_turret_ruin', nexus: 's_nexus_ruin' };
+
+/** 미니언 종류 → 소속 팀 */
+const TEAM_OF: Partial<Record<Kind, TeamId>> = { push: 'push', pushR: 'push', dev: 'dev', devC: 'dev', biz: 'biz', bizC: 'biz' };
+const teamOf = (k: Kind): TeamId => TEAM_OF[k] || 'dev';
 
 const TEAM_COLOR: Record<TeamId, number> = { push: 0x3d8bff, dev: 0x00b7ff, biz: 0x00dc84 };
 const TEAM_NAME: Record<TeamId, string> = { push: '추진팀', dev: '개발팀', biz: '사업팀' };
@@ -187,7 +206,9 @@ export class GameScene extends Phaser.Scene implements LaneHost {
   }
 
   private buildMap() {
-    const cv = paintMap(this.grid, 1);
+    const src = (k: string) => (this.textures.exists(k) ? (this.textures.get(k).getSourceImage() as CanvasImageSource) : undefined);
+    const grass = this.textures.exists('tile_grass') ? src('tile_grass') : undefined;
+    const cv = paintMap(this.grid, 1, { grass, pine: src('deco_pine'), group: src('deco_group') });
     const n = 3,
       size = WORLD.w / n;
     for (let i = 0; i < n; i++)
@@ -215,6 +236,8 @@ export class GameScene extends Phaser.Scene implements LaneHost {
     const u = new Unit(this, {
       side, kind, x, y, hp, radius: v.r, texture: v.tex, displayH: v.h, hpWidth: v.hpW, hpY: v.hpY, shadowW: v.shadowW,
     });
+    u.anim = v.anim || null;
+    u.normFrames = !!v.norm;
     this.units.push(u);
     return u;
   }
@@ -327,7 +350,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
   }
 
   private addShield(id: string, u: Unit, scale: number) {
-    const s = this.add.image(0, -u.radius * 0.9, 'fx_hex').setTint(0xb06bff).setAlpha(0.55).setScale(scale).setBlendMode('ADD');
+    const s = this.add.image(0, -u.displayH * 0.45, 'fx_hex').setTint(0xb06bff).setAlpha(0.55).setScale(scale).setBlendMode('ADD');
     u.view.add(s);
     this.tweens.add({ targets: s, alpha: 0.3, yoyo: true, repeat: -1, duration: 1100 });
     this.shields.set(id, s);
@@ -382,6 +405,11 @@ export class GameScene extends Phaser.Scene implements LaneHost {
   }
 
   private createSigns() {
+    // 아군 본진 깃발
+    if (this.textures.exists('deco_banner'))
+      for (const p of [{ x: 140, y: 1880 }, { x: 520, y: 2230 }, { x: 560, y: 1860 }]) {
+        this.add.image(p.x, p.y, 'deco_banner').setOrigin(0.5, 0.95).setScale(110 / 260).setDepth(p.y);
+      }
     for (const l of LANES) {
       const t = this.add
         .text(l.sign.x, l.sign.y, `${l.label} · ${l.teamName}`, {
@@ -415,9 +443,9 @@ export class GameScene extends Phaser.Scene implements LaneHost {
   spawnLaneUnit(lane: LaneRuntime, kind: Kind, s: number, empowered: boolean): Unit | null {
     const p = lane.point(s);
     const jitter = () => (Math.random() - 0.5) * 30;
-    const side: Side = kind === 'push' || kind === 'dev' || kind === 'biz' ? 'ally' : 'enemy';
+    const side: Side = TEAM_OF[kind] ? 'ally' : 'enemy';
     const u = this.makeUnit(kind, side, p.x + jitter(), p.y + jitter(), 1);
-    const stats = side === 'ally' ? BALANCE.allyUnits[kind as 'push'] : (BALANCE.enemyUnits as any)[kind];
+    const stats = side === 'ally' ? (BALANCE.allyUnits as any)[kind] : (BALANCE.enemyUnits as any)[kind];
     this.applyStats(u, stats, empowered ? BALANCE.enemyUnits.empoweredHpMult : 1);
     u.lane = lane;
     u.s = s;
@@ -439,7 +467,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
     u.refreshHp();
     this.lightPillar(pos.x, pos.y, TEAM_COLOR[team]);
     const tag = this.add
-      .text(0, -70, TEAM_NAME[team], { fontFamily: 'Freesentation, sans-serif', fontSize: '12px', color: '#fff', stroke: '#0b1a33', strokeThickness: 4, resolution: 2 })
+      .text(0, -80, TEAM_NAME[team], { fontFamily: 'Freesentation, sans-serif', fontSize: '12px', color: '#fff', stroke: '#0b1a33', strokeThickness: 4, resolution: 2 })
       .setOrigin(0.5);
     u.view.add(tag);
     return u;
@@ -764,7 +792,9 @@ export class GameScene extends Phaser.Scene implements LaneHost {
         this.attachShieldFx(u, S.w.duration);
       }
       this.shockwave(p.x, p.y, 0x00b7ff, S.w.radius, 500);
-      this.floatText(p.x, p.y - 120, '보안 강화!', '#9fdcff', 18);
+      this.playFrames(p.x, p.y + 10, ['fx_w_0', 'fx_w_1', 'fx_w_2', 'fx_w_3'], { height: 150, frameMs: 90, depth: p.y + 5, originY: 0.9 });
+      this.playFrames(p.x + 30, p.y - 120, ['fx_w_icon'], { height: 60, hold: 400 });
+      this.floatText(p.x, p.y - 140, '보안 강화!', '#9fdcff', 18);
     } else {
       this.castUlt();
     }
@@ -791,6 +821,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
         }
     }
     this.shockwave(p.x, p.y, 0xffe28a, 260, 700);
+    this.playFrames(p.x, p.y + 20, ['fx_r_0', 'fx_r_1', 'fx_r_2', 'fx_r_3'], { height: 230, frameMs: 170, hold: 500, depth: p.y + 5, originY: 0.85 });
     this.cameras.main.flash(250, 255, 240, 200);
 
     this.time.delayedCall(750, () => {
@@ -800,7 +831,10 @@ export class GameScene extends Phaser.Scene implements LaneHost {
       // 합동 공격: 각 팀 미니언이 광선 발사
       for (const r of rallies) {
         const t = this.boss && this.boss.alive && r.dist(this.boss) < 700 ? this.boss : this.findTargetFor(r, 600);
-        if (t) this.beam(r.x, r.y - 30, t.x, t.y - 40, TEAM_COLOR[r.kind as TeamId]);
+        if (t) {
+          this.beam(r.x, r.y - 30, t.x, t.y - 40, TEAM_COLOR[teamOf(r.kind)]);
+          this.playFrames(t.x, t.y - 30, ['fx_q_hit'], { height: 110, hold: 200, add: true });
+        }
       }
       this.beam(p.x, p.y - 60, p.x, p.y - 400, 0xffe28a);
       for (const u of this.units) {
@@ -845,7 +879,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
 
   private updateMinion(u: Unit, dt: number) {
     if (u.rally && this.simTime > u.expireAt) {
-      this.lightPillar(u.x, u.y, TEAM_COLOR[u.kind as TeamId]);
+      this.lightPillar(u.x, u.y, TEAM_COLOR[teamOf(u.kind)]);
       this.removeUnitQuiet(u);
       return;
     }
@@ -945,7 +979,10 @@ export class GameScene extends Phaser.Scene implements LaneHost {
           hit.slowUntil = this.simTime + E.slowTime;
           hit.slowMult = 1 - E.slow;
         });
-      } else this.fireProjectile(u, t, u.damage, u.kind === 'dev' ? 'laser' : 'cannon');
+      } else {
+        const type = u.kind === 'dev' ? 'laser' : u.kind === 'pushR' ? 'spear' : u.kind === 'devC' ? 'blueorb' : 'cannon';
+        this.fireProjectile(u, t, u.damage, type);
+      }
     } else {
       this.dealDamage(t, u.damage, u);
       if (this.onScreen(t.x, t.y)) this.hitSpark(t.x + (Math.random() - 0.5) * 10, t.y - 18, u.side === 'ally' ? 0xbfe0ff : 0xff6b8a, 0.5);
@@ -1129,6 +1166,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
       this.time.delayedCall(i * 260, () => {
         if (!b.alive || this.dead) return;
         b.attackAnim = 0.2;
+        if (i === 0) this.bossPose(b, 'boss_idle', 0.8);
         audio.play('bossShot');
         const sx = b.x + b.facing * 40,
           sy = b.y - 90;
@@ -1154,11 +1192,14 @@ export class GameScene extends Phaser.Scene implements LaneHost {
     }
     audio.play('warn');
     b.attackAnim = 0.3;
+    this.bossPose(b, 'boss_slash', 0.7);
     for (const s of spots) {
       const rad = B.aoeRadius;
       const ring = this.add.image(s.x, s.y, 'fx_ring').setTint(0xff2e4d).setDepth(2).setDisplaySize(rad * 2, rad * 2 * 0.62);
       const fill = this.add.image(s.x, s.y, 'fx_disc').setTint(0xff2e4d).setAlpha(0.35).setDepth(2).setDisplaySize(10, 6);
-      const mark = this.add.text(s.x, s.y, '!', { fontFamily: 'sans-serif', fontSize: '34px', color: '#ffdddd', fontStyle: 'bold', stroke: '#5a0010', strokeThickness: 6 }).setOrigin(0.5).setDepth(3);
+      const mark = this.textures.exists('fx_warning')
+        ? this.add.image(s.x, s.y - 10, 'fx_warning').setScale(56 / 90).setDepth(3)
+        : this.add.text(s.x, s.y, '!', { fontFamily: 'sans-serif', fontSize: '34px', color: '#ffdddd', fontStyle: 'bold', stroke: '#5a0010', strokeThickness: 6 }).setOrigin(0.5).setDepth(3);
       this.tweens.add({ targets: ring, alpha: 0.4, yoyo: true, repeat: -1, duration: 160 });
       this.tweens.add({
         targets: fill, displayWidth: rad * 2, displayHeight: rad * 2 * 0.62, duration: B.aoeWarn * 1000, ease: 'Linear',
@@ -1169,7 +1210,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
           if (!this.scene.isActive()) return;
           audio.play('bossAoe');
           this.shockwave(s.x, s.y, 0xff2fd0, rad, 400);
-          this.glitchBurst(s.x, s.y - 20, 8);
+          this.strikeFx(s.x, s.y, rad);
           this.cameras.main.shake(150, 0.005);
           for (const u of this.units) {
             if (!u.alive || u.side !== 'ally' || u.isStructure) continue;
@@ -1187,6 +1228,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
     const B = BALANCE.boss;
     b.attackAnim = 0.3;
     this.glitchBurst(b.x, b.y - 60, 12);
+    this.bossPose(b, 'boss_punch', 0.6);
     const n = this.units.filter((u) => u.alive && u.kind === 'bug' && !u.lane).length;
     for (let i = 0; i < B.summonCount && n + i < 8; i++) {
       const a = (i / B.summonCount) * Math.PI * 2 + Math.random();
@@ -1195,7 +1237,9 @@ export class GameScene extends Phaser.Scene implements LaneHost {
       const u = this.makeUnit('bug', 'enemy', x, y, 1);
       this.applyStats(u, BALANCE.enemyUnits.bug, 0.8);
       u.refreshHp();
-      this.pixelBurst(x, y - 10, 0xb06bff);
+      this.playFrames(x, y + 6, ['fx_portal'], { height: 80, hold: 350, depth: y - 1, originY: 0.85 });
+      u.view.setAlpha(0);
+      this.tweens.add({ targets: u.view, alpha: 1, duration: 400 });
     }
     bus.emit('toast', 'ZERO DAY가 취약점 버그를 소환했습니다!');
   }
@@ -1225,6 +1269,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
     this.cameras.main.shake(700, 0.015);
     for (let i = 0; i < 5; i++) this.time.delayedCall(i * 140, () => this.glitchBurst(b.x + (Math.random() - 0.5) * 80, b.y - 40 - Math.random() * 100, 14));
     this.shockwave(b.x, b.y, 0xff2fd0, 360, 900);
+    this.blastFx(b.x, b.y, 340);
     this.tweens.add({ targets: b.view, alpha: 0, scaleX: 1.6, scaleY: 0.2, duration: 900, onComplete: () => b.destroyView() });
     bus.emit('banner', { text: 'ZERO DAY 무력화!', sub: '넥서스 방어시설을 제거하세요', kind: 'boss' });
     bus.emit('boss:end');
@@ -1263,7 +1308,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
   /* ─────────── 전투 공통 ─────────── */
   private fireProjectile(src: Unit, target: Unit, damage: number, type: string, onHit?: (t: Unit) => void) {
     const sx = src.x + src.facing * (src.isStructure ? 0 : 16);
-    const sy = src.y - (src.isStructure ? src.radius * 2.2 : src.kind === 'player' ? 70 : 30);
+    const sy = src.y - (src.isStructure ? src.displayH * 0.75 : src.kind === 'player' ? 74 : 30);
     let img: Phaser.GameObjects.Image;
     let glow: Phaser.GameObjects.Image | undefined;
     let speed = 520,
@@ -1273,11 +1318,24 @@ export class GameScene extends Phaser.Scene implements LaneHost {
       img = this.add.image(sx, sy, 'fx_spark').setTint(0xe6fbff).setScale(0.8);
       speed = 720;
       spin = 10;
+    } else if (type === 'turret' && src.kind === 'turret') {
+      // 포탑 대포: 분홍 에너지탄
+      img = this.add.image(sx, sy, 'fx_disc').setTint(0xffd6f0).setScale(0.12);
+      glow = this.add.image(sx, sy, 'fx_glow').setTint(0xff3bd4).setScale(0.45).setBlendMode('ADD');
+      speed = 500;
     } else if (type === 'turret') {
+      // 방화벽(복합기): 용지 발사
       img = this.add.image(sx, sy, 'fx_paper').setScale(0.9);
-      glow = this.add.image(sx, sy, 'fx_glow').setTint(0xb06bff).setScale(0.35).setBlendMode('ADD');
+      glow = this.add.image(sx, sy, 'fx_glow').setTint(0xff3bd4).setScale(0.32).setBlendMode('ADD');
       speed = 480;
       spin = 8;
+    } else if (type === 'spear') {
+      img = this.add.image(sx, sy, 'fx_bolt').setTint(0x7fb3ff).setScale(0.8, 0.5);
+      speed = 700;
+    } else if (type === 'blueorb') {
+      img = this.add.image(sx, sy, 'fx_disc').setTint(0xe6fbff).setScale(0.1);
+      glow = this.add.image(sx, sy, 'fx_glow').setTint(0x00b7ff).setScale(0.4).setBlendMode('ADD');
+      speed = 520;
     } else if (type === 'allyTurret') {
       img = this.add.image(sx, sy, 'fx_bolt').setTint(0x9fdcff);
       glow = this.add.image(sx, sy, 'fx_glow').setTint(0x00b7ff).setScale(0.3).setBlendMode('ADD');
@@ -1407,9 +1465,15 @@ export class GameScene extends Phaser.Scene implements LaneHost {
     }
     if (u.side === 'ally') {
       // 과격한 연출 대신 빛과 함께 본진 귀환
-      this.lightPillar(u.x, u.y, 0x9fdcff);
-      u.sprite.setTintFill(0xffffff);
-      this.tweens.add({ targets: u.view, alpha: 0, y: u.y - 40, duration: 500, onComplete: () => u.destroyView() });
+      const ret = `m_${u.kind}_ret`;
+      if (this.textures.exists(ret)) {
+        u.view.setVisible(false);
+        this.playFrames(u.x, u.y + 6, [ret], { height: 70, hold: 350, depth: u.y, originY: 0.95 });
+        u.destroyView();
+      } else {
+        this.lightPillar(u.x, u.y, 0x9fdcff);
+        this.tweens.add({ targets: u.view, alpha: 0, y: u.y - 40, duration: 500, onComplete: () => u.destroyView() });
+      }
     } else {
       this.glitchBurst(u.x, u.y - 16, 8);
       this.tweens.add({ targets: u.view, alpha: 0, scaleX: 1.4, scaleY: 0.3, duration: 260, onComplete: () => u.destroyView() });
@@ -1421,12 +1485,16 @@ export class GameScene extends Phaser.Scene implements LaneHost {
     this.grid.setCircleBlocked(u, u.kind === 'nexus' ? 70 : u.kind === 'turret' ? 44 : u.kind === 'inhibitor' ? 34 : 26, false);
     for (const e of u.extra) e.destroy();
     u.extra = [];
-    if (u.kind === 'nexus') return this.victorySequence(u);
+    if (u.kind === 'nexus') {
+      u.hpBg?.setVisible(false);
+      u.hpFill?.setVisible(false);
+      return this.victorySequence(u);
+    }
     // 폐허 표시
     u.hpBg?.setVisible(false);
     u.hpFill?.setVisible(false);
-    this.tweens.add({ targets: u.sprite, alpha: 0.35, scaleY: u.baseScale * 0.55, duration: 600 });
-    u.sprite.setTint(0x555566);
+    this.showRuin(u);
+    this.blastFx(u.x, u.y, u.displayH * 1.5);
     this.shockwave(u.x, u.y, 0xffe28a, 220, 700);
     for (let i = 0; i < 18; i++) this.debris(u.x, u.y - u.radius);
     this.cameras.main.shake(450, 0.012);
@@ -1458,6 +1526,21 @@ export class GameScene extends Phaser.Scene implements LaneHost {
       this.checkNexusShield();
     }
     this.saveProgress();
+  }
+
+  /** 파괴된 구조물을 폐허 이미지로 교체 */
+  private showRuin(u: Unit) {
+    const ruin = RUIN[u.kind];
+    if (ruin && this.textures.exists(ruin)) {
+      u.normFrames = true;
+      u.displayH = u.displayH * 0.75;
+      u.setTex(ruin);
+      u.sprite.setScale(u.baseScale).clearTint().setAlpha(1);
+    } else {
+      u.sprite.setAlpha(0.35).setTint(0x555566).setScale(u.baseScale, u.baseScale * 0.55);
+    }
+    u.view.setVisible(this.onScreen(u.x, u.y, 160));
+    u.view.setPosition(u.x, u.y).setDepth(u.y);
   }
 
   private peekEnemyBase() {
@@ -1544,7 +1627,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
       s.extra = [];
       s.hpBg?.setVisible(false);
       s.hpFill?.setVisible(false);
-      s.sprite.setAlpha(0.35).setTint(0x555566).setScale(s.baseScale, s.baseScale * 0.55);
+      this.showRuin(s);
       const [laneId, type] = id.split('_');
       const lane = this.lanesMgr.lanes.find((l) => l.def.id === laneId);
       if (lane && type === 'turret') {
@@ -1575,7 +1658,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
     fsm.set(GameState.VICTORY);
     const cam = this.cameras.main;
     cam.stopFollow();
-    this.player.sprite.setTexture('champion_victory');
+    this.player.setTex('champ_victory');
     this.castAnim = 99;
     audio.music('none');
     audio.play('turretDestroy');
@@ -1628,43 +1711,46 @@ export class GameScene extends Phaser.Scene implements LaneHost {
       if (u.isStructure) {
         if (u.hitFlash > 0) {
           u.hitFlash -= dt;
-          u.sprite.setTintFill(0xffffff);
+          u.sprite.setTint(0xffd0d0);
           if (u.hitFlash <= 0) u.sprite.clearTint();
         }
         continue;
       }
-      // 걷기/대기/공격 애니메이션
-      const fly = u.kind === 'phishing' ? -16 + Math.sin(t * 5 + u.bobPhase) * 5 : 0;
+      // 프레임 애니메이션 + 가벼운 흔들림
+      const fly = u.kind === 'phishing' ? -14 + Math.sin(t * 5 + u.bobPhase) * 5 : 0;
+      const a = u.anim;
+      let tex = u.curTex;
+      if (u.attackAnim > 0) u.attackAnim -= dt;
+      if (u.hitFlash > 0) u.hitFlash -= dt;
+      if (a) {
+        if (u.attackAnim > 0 && a.atk) tex = a.atk;
+        else if (u.hitFlash > 0 && a.hit) tex = a.hit;
+        else if (u.moving) tex = a.run[Math.floor(t * 9 + u.bobPhase) % a.run.length];
+        else tex = a.idle[Math.floor(t * 2.5 + u.bobPhase) % a.idle.length];
+      }
+      if (u === this.player) {
+        if (this.castAnim > 50) tex = 'champ_victory';
+        else if (this.castAnim > 0) tex = 'champ_atk_1';
+        else if (u.attackAnim > 0) tex = ['champ_atk_0', 'champ_atk_1', 'champ_atk_2', 'champ_atk_3'][Math.min(3, Math.floor((1 - u.attackAnim / 0.22) * 4))];
+      }
+      u.setTex(tex);
       if (u.moving) {
         const ph = t * 13 + u.bobPhase;
-        u.sprite.y = u.spriteBaseY - Math.abs(Math.sin(ph)) * 4 + fly;
-        u.sprite.rotation = Math.sin(ph) * 0.07;
+        u.sprite.y = u.spriteBaseY - Math.abs(Math.sin(ph)) * 2 + fly;
         u.sprite.setScale(u.baseScale);
       } else {
         u.sprite.y = u.spriteBaseY + fly;
-        u.sprite.rotation = 0;
-        u.sprite.setScale(u.baseScale, u.baseScale * (1 + Math.sin(t * 3.5 + u.bobPhase) * 0.025));
+        u.sprite.setScale(u.baseScale, u.baseScale * (1 + Math.sin(t * 3.5 + u.bobPhase) * 0.02));
       }
-      if (u.attackAnim > 0) {
-        u.attackAnim -= dt;
-        u.sprite.x = u.facing * Math.sin((u.attackAnim / 0.22) * Math.PI) * 7;
-      } else u.sprite.x = 0;
+      u.sprite.rotation = 0;
+      u.sprite.x = u.attackAnim > 0 && !a?.atk ? u.facing * Math.sin((u.attackAnim / 0.22) * Math.PI) * 7 : 0;
       u.sprite.setFlipX(u.facing < 0);
-      if (u.hitFlash > 0) {
-        u.hitFlash -= dt;
-        u.sprite.setTintFill(u === this.player ? 0xff6b6b : 0xffffff);
-        if (u.hitFlash <= 0) {
-          u.sprite.clearTint();
-          if (u.side === 'enemy' && u.lane?.inhibAlive) u.sprite.setTint(0xffb3c6);
-        }
-      }
-      if (u === this.player) {
-        const want = this.castAnim > 0 ? (this.castAnim > 50 ? 'champion_victory' : 'champion_attack') : u.attackAnim > 0 ? 'champion_attack' : 'champion_idle';
-        if (u.sprite.texture.key !== want) u.sprite.setTexture(want);
-        if (this.faceImg) {
-          this.faceImg.y = u.sprite.y + (FACE_ANCHOR.y - 0.92 * FACE_ANCHOR.h) * (KIND_VIEW.player.h / FACE_ANCHOR.h);
-          this.faceImg.x = u.sprite.x + (u.facing < 0 ? 0 : 0);
-        }
+      const tinted = u.hitFlash > 0;
+      if (tinted !== (u as any)._tinted) {
+        (u as any)._tinted = tinted;
+        if (tinted) u.sprite.setTint(u === this.player ? 0xff9a9a : 0xffc0c0);
+        else if (u.side === 'enemy' && u.lane?.inhibAlive) u.sprite.setTint(0xffb3c6);
+        else u.sprite.clearTint();
       }
       if (u.shieldFx) u.shieldFx.setVisible(u.shieldUntil > this.simTime);
     }
@@ -1841,28 +1927,71 @@ export class GameScene extends Phaser.Scene implements LaneHost {
     this.hitSpark(x2, y2, color, 1.4);
   }
 
-  coneFx(x: number, y: number, ang: number, range: number, deg: number) {
-    const g = this.add.graphics().setDepth(3).setBlendMode('ADD');
-    const half = Phaser.Math.DegToRad(deg / 2);
-    g.fillStyle(0x00b7ff, 0.35);
-    g.slice(x, y + 20, range, ang - half, ang + half, false);
-    g.fillPath();
-    g.lineStyle(3, 0xbff0ff, 0.9);
-    g.beginPath();
-    g.arc(x, y + 20, range, ang - half, ang + half, false);
-    g.strokePath();
-    this.tweens.add({ targets: g, alpha: 0, duration: 350, onComplete: () => g.destroy() });
-    for (let i = -2; i <= 2; i++) {
-      const a = ang + (i / 2) * half * 0.85;
-      const b = this.add.image(x, y, 'fx_bolt').setTint(0x7fd8ff).setRotation(a).setDepth(4500).setBlendMode('ADD');
-      this.tweens.add({ targets: b, x: x + Math.cos(a) * range, y: y + Math.sin(a) * range, alpha: 0.2, duration: 260, onComplete: () => b.destroy() });
+  /** 텍스처 프레임을 순서대로 재생하는 1회성 이펙트 */
+  playFrames(x: number, y: number, keys: string[], opts: { height: number; frameMs?: number; depth?: number; hold?: number; add?: boolean; flip?: boolean; originY?: number } ) {
+    const ks = keys.filter((k) => this.textures.exists(k));
+    if (!ks.length) return null;
+    const img = this.add.image(x, y, ks[0]).setOrigin(0.5, opts.originY ?? 0.5).setDepth(opts.depth ?? 4600).setFlipX(!!opts.flip);
+    if (opts.add) img.setBlendMode('ADD');
+    const fit = () => img.setScale(opts.height / img.height);
+    fit();
+    const ms = opts.frameMs ?? 90;
+    ks.slice(1).forEach((k, i) => this.time.delayedCall(ms * (i + 1), () => { if (img.active) { img.setTexture(k); fit(); } }));
+    this.tweens.add({ targets: img, alpha: 0, delay: ms * ks.length + (opts.hold ?? 0), duration: 260, onComplete: () => img.destroy() });
+    return img;
+  }
+
+  /** 보스 광역 공격 착탄: 붉은 번개 */
+  strikeFx(x: number, y: number, rad: number) {
+    const img = this.playFrames(x, y + rad * 0.35, ['fx_red_strike'], { height: rad * 2.6, hold: 120, depth: y + 2, originY: 1, add: false });
+    if (img) {
+      img.setScale(img.scale * 0.6);
+      this.tweens.add({ targets: img, scale: img.scale / 0.6, duration: 140, ease: 'Back.easeOut' });
+    } else this.glitchBurst(x, y - 20, 8);
+  }
+
+  /** 적 구조물·보스 파괴: 보랏빛 충격파 */
+  blastFx(x: number, y: number, h: number) {
+    const img = this.playFrames(x, y + h * 0.3, ['fx_purple_blast'], { height: h, hold: 350, depth: y + 50, originY: 1 });
+    if (img) {
+      img.setScale(img.scale * 0.5);
+      this.tweens.add({ targets: img, scale: img.scale * 2, duration: 260, ease: 'Back.easeOut' });
     }
   }
 
-  attachShieldFx(u: Unit, dur: number) {
+  /** 보스 공격 자세 일시 표시 */
+  private bossPose(b: Unit, key: string, secs: number) {
+    b.anim = { idle: [key], run: [key] };
+    this.time.delayedCall(secs * 1000, () => {
+      if (b.alive) b.anim = KIND_VIEW.boss.anim!;
+    });
+  }
+
+  coneFx(x: number, y: number, ang: number, range: number, deg: number) {
+    const g = this.add.graphics().setDepth(3).setBlendMode('ADD');
+    const half = Phaser.Math.DegToRad(deg / 2);
+    g.fillStyle(0x00b7ff, 0.22);
+    g.slice(x, y + 20, range, ang - half, ang + half, false);
+    g.fillPath();
+    this.tweens.add({ targets: g, alpha: 0, duration: 350, onComplete: () => g.destroy() });
+    // 긴급 대응: 푸른 참격파 3줄기
+    const flip = Math.cos(ang) < 0;
+    for (let i = -1; i <= 1; i++) {
+      const a = ang + i * half * 0.6;
+      const img = this.add.image(x, y, 'fx_q_0').setDepth(4500).setBlendMode('ADD');
+      img.setRotation(flip ? a + Math.PI : a).setFlipX(flip).setScale(0.32);
+      const keys = ['fx_q_0', 'fx_q_1', 'fx_q_2', 'fx_q_3'];
+      keys.forEach((k, j) => this.time.delayedCall(j * 60, () => img.active && img.setTexture(k)));
+      this.tweens.add({ targets: img, x: x + Math.cos(a) * range * 0.85, y: y + Math.sin(a) * range * 0.85, scale: 0.5, duration: 280, ease: 'Cubic.easeOut' });
+      this.tweens.add({ targets: img, alpha: 0, delay: 220, duration: 140, onComplete: () => img.destroy() });
+    }
+  }
+
+  attachShieldFx(u: Unit, _dur: number) {
     if (!u.shieldFx) {
-      u.shieldFx = this.add.image(0, -u.radius * 1.6, 'fx_hex').setTint(0x3d9bff).setAlpha(0.6).setBlendMode('ADD');
-      u.shieldFx.setScale(u.kind === 'player' ? 0.95 : 0.6);
+      const big = u.kind === 'player';
+      u.shieldFx = this.add.image(0, 8, big ? 'fx_w_3' : 'fx_w_2').setOrigin(0.5, 0.92).setAlpha(0.6);
+      u.shieldFx.setScale((big ? 150 : 84) / u.shieldFx.width);
       u.view.add(u.shieldFx);
     }
     u.shieldFx.setVisible(true);

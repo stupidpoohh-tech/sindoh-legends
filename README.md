@@ -114,20 +114,44 @@ Cloudflare Pages 는 **파일 하나당 25MiB 제한**이 있어 3분 분량 영
 - `media.json` 은 빌드 후 `dist/config/media.json` 으로 복사되므로 **빌드 없이 dist 안의 파일만 수정해도** 반영됩니다.
 - 권장 인코딩: H.264 + AAC MP4, 720p, `-movflags +faststart` (iPhone 호환)
 
-### 이미지·사운드 — `public/config/assets.json`
+### 일러스트·스프라이트 — `art-src/` → `public/assets/game/`
+
+게임 그래픽은 `art-src/` 의 원본 일러스트·스프라이트 시트를 잘라 만든 WebP 스프라이트(약 115개, 2.3MB)입니다.
+
+| 원본 | 사용처 |
+|---|---|
+| 부장님 마법사의 스프라이트 시트2 | 챔피언 대기·달리기(4)·공격(4)·피격·쓰러짐·승리 |
+| download2 | 타이틀 화면 부장님 일러스트 |
+| 신도 레전드 미니언 스프라이트 시트 | 추진팀(근접·원거리) / 개발팀(원거리·대포) / 사업팀(근접·복합기 포격), 대기·이동·공격·피격·귀환 |
+| 네온 글리치 보스와 적 유닛 스프라이트 시트 | 취약점 버그·피싱 메일·랜섬웨어·ZERO DAY(대기·펀치·베기)·소환 포털·경고 표시 |
+| 구조물1 / 구조물2 / 구조물3 / 구조물4 / download1 | 아군 포탑 / 적 포탑 / 억제기 / 적 넥서스 / 아군 넥서스 |
+| 신도 레전드 구조물 스프라이트 시트 | 넥서스 방화벽, 파괴된 구조물(폐허) |
+| 블루 골드 스킬 이펙트 시트 | Q 참격파, W 보호막, R 전 부서 집결 |
+| 보랏빛 마법 충격파 폭발 / 붉은 번개 충격파 이펙트 | 적 구조물·보스 파괴 / 보스 광역 공격 |
+| 아기자기한 판타지 초원 타일, download5, download3 | 맵 초원 타일, 소나무·바위 장식, 본진 깃발 |
+| 판타지 게임 HUD UI 스프라이트 시트 | 초상화, 스킬 버튼, 일시정지·소리·설정 버튼, 금테 프레임 패널 |
+| 신도 레전드 판타지 시작 화면 | 가로 화면 타이틀(버튼 위치에 터치 영역), 세로 화면 로고 |
+| 삼각형 전장의 빛나는 미니맵 | 입장 연출 배경 |
+| KakaoTalk_… (디오라마) | 추억의 기록관 상단 이미지 |
+| 신도 레전드 게임 디자인 보드-1 | 디자인 참고용 (게임에 직접 사용하지 않음) |
+
+원본을 수정·교체했다면 아래 명령으로 다시 잘라냅니다. (필요: `pip install pillow numpy scipy`)
+
+```bash
+python3 tools/build_sprites.py
+```
+
+`art-src/` 는 배포 결과물(`dist/`)에 포함되지 않습니다.
+
+### 개별 교체 — `public/config/assets.json`
 
 - `champion.name` : 챔피언 표시 이름 (기본 `GAME MASTER`)
-- `images.championFace` : 부장님 얼굴 이미지(투명 배경 PNG, 정사각형, 원형으로 잘린 얼굴 권장).
-  지정하면 내장 캐릭터의 얼굴 부분이 비워지고 그 자리에 얼굴 이미지가 합성됩니다.
-- `images.champion_idle / champion_attack / champion_victory` : 챔피언 전신 이미지 통째 교체 (128:160 비율 PNG 권장)
-- `images.minion_push / minion_dev / minion_biz / enemy_* / boss_zeroday / turret_* / inhibitor / nexus_* / firewall / memory_*`
+- `images.<키>` : 해당 스프라이트만 다른 파일로 교체 (키 목록은 파일 안에 있음, 예: `champ_idle`, `m_push_idle`, `boss_main`, `s_turret`)
 - `audio.bgm / bgm_boss` : 배경음악 파일 (지정하지 않으면 합성 음악)
 - `audio.voice_welcome / voice_summon / voice_victory` : 입장·궁극기·승리 음성 (없으면 텍스트 + 효과음)
 - `audio.sfx_*` : 효과음 교체
 
-경로가 틀리거나 파일이 없으면 자동으로 내장 그래픽/사운드를 사용합니다. 이미지 파일은 `public/assets/images/`,
-오디오는 `public/assets/audio/` 에 두고 `assets/images/face.png` 처럼 적으면 됩니다.
-(`public/assets/images/private_*` 이름의 파일은 저장소에 올라가지 않습니다.)
+경로가 틀리거나 파일이 없으면 자동으로 내장 대체 그래픽/합성 사운드를 사용합니다.
 
 ### 전투 수치 — `src/config/balance.ts`
 

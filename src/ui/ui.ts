@@ -35,9 +35,15 @@ function later(fn: () => void, ms: number) {
   return id;
 }
 
+const G = (k: string) => `assets/game/${k}.webp`;
+/** 일러스트 이미지 + 로딩 실패 시 내장 SVG 대체 */
+function artImg(src: string, fallbackPose: 'idle' | 'victory', cls = '', alt = '') {
+  const fb = svgDataUrl(championSvg(fallbackPose));
+  return `<img class="${cls}" alt="${alt}" src="${src}" onerror="this.onerror=null;this.src='${fb}'">`;
+}
 function championImg(pose: 'idle' | 'victory' = 'idle') {
-  const override = runtime.assets.images?.['champion_' + pose];
-  return override || svgDataUrl(championSvg(pose));
+  const override = runtime.assets.images?.[pose === 'idle' ? 'title_champ' : 'champ_victory'];
+  return override || G(pose === 'idle' ? 'title_champ' : 'champ_victory');
 }
 
 /* ═════════════ 초기화 ═════════════ */
@@ -70,7 +76,9 @@ export function initUi(h0: UiHooks) {
       s.lastChild!.textContent = save.hasProgress() ? '처음부터 입장' : '협곡 입장';
     }
     $('#title .loading-bar')?.classList.add('hidden');
+    $('#title')?.classList.add('ready');
     $('#continueBtn')?.classList.toggle('hidden', !save.hasProgress());
+    $('#continueBtn2')?.classList.toggle('hidden', !save.hasProgress());
   });
   bus.on('state', ({ next }) => onState(next));
   bus.on('hud', updateHud);
@@ -124,36 +132,64 @@ function buildTitle() {
   const name = runtime.assets.champion.name;
   const el = h(`
   <div id="title" class="screen">
-    <div class="stars"></div>
-    <div class="title-top">
-      <span class="tag">${runtime.assets.champion.affiliation} · RETIREMENT EDITION</span>
-      <button class="icon-btn" id="titleSound" aria-label="소리 켜기/끄기"></button>
-    </div>
-    <div class="logo">
-      <div class="l1">SINDOH<span>LEGENDS</span></div>
-      <div class="l2">${runtime.assets.champion.subtitle}</div>
-    </div>
-    <div class="hero"><img alt="${name}" src="${championImg('idle')}"><div class="name">${name}</div></div>
-    <div class="title-actions">
-      <div class="loading-bar"><i></i></div>
-      <button class="btn primary hidden" id="continueBtn">이어하기</button>
-      <button class="btn primary" id="startBtn" disabled><span>불러오는 중…</span></button>
-      <div class="row">
-        <button class="btn ghost" id="archiveBtn">${ICONS.archive}<span>추억의 기록관</span></button>
+    <!-- 세로 화면: 레이어 구성 -->
+    <div class="tp">
+      <div class="clouds"></div>
+      <div class="title-top">
+        <span class="tag">${runtime.assets.champion.affiliation} · RETIREMENT EDITION</span>
+        <button class="img-btn" id="titleSound" aria-label="소리 켜기/끄기"><img src="${G('ui_sound')}" alt=""><i class="mute"></i></button>
       </div>
-      <div class="credit">본 게임은 퇴직 기념을 위해 제작된 비상업용 오리지널 게임입니다.</div>
+      <img class="logo-img" src="${G('title_logo')}" alt="SINDOH LEGENDS - THE LAST SUMMONER"
+        onerror="this.outerHTML='<div class=&quot;logo&quot;><div class=&quot;l1&quot;>SINDOH<span>LEGENDS</span></div><div class=&quot;l2&quot;>THE LAST SUMMONER</div></div>'">
+      <div class="hero">
+        <img class="nexus" src="${G('s_ally_nexus')}" alt="" onerror="this.remove()">
+        ${artImg(championImg('idle'), 'idle', 'champ', name)}
+        <img class="minions" src="${G('title_minions')}" alt="" onerror="this.remove()">
+      </div>
+      <div class="title-actions">
+        <div class="loading-bar"><i></i></div>
+        <button class="pill-btn gold hidden" id="continueBtn">이어하기</button>
+        <button class="pill-btn" id="startBtn" disabled><span>불러오는 중…</span></button>
+        <button class="pill-btn small" id="archiveBtn">${ICONS.archive}<span>추억의 기록관</span></button>
+        <div class="credit">본 게임은 퇴직 기념을 위해 제작된 비상업용 게임입니다.</div>
+      </div>
+    </div>
+    <!-- 가로 화면: 시작 화면 일러스트 + 터치 영역 -->
+    <div class="tl">
+      <div class="tl-bg"></div>
+      <div class="tl-art">
+        <img src="${G('title_full')}" alt="SINDOH LEGENDS 시작 화면" draggable="false">
+        <button class="hot" data-act="continue" id="continueBtn2" style="left:31%;top:42.5%;width:40%;height:11%">이어하기</button>
+        <button class="hot invisible" data-act="start" style="left:31%;top:56%;width:40%;height:14%" aria-label="협곡 입장"></button>
+        <button class="hot invisible" data-act="archive" style="left:23%;top:78.5%;width:30.5%;height:13.5%" aria-label="추억의 기록관"></button>
+        <button class="hot invisible" data-act="sound" style="left:55.4%;top:78.5%;width:8.6%;height:13.5%" aria-label="소리"><i class="mute"></i></button>
+        <button class="hot invisible" data-act="settings" style="left:66.2%;top:78.5%;width:8.6%;height:13.5%" aria-label="설정"></button>
+        <div class="tl-loading">불러오는 중…</div>
+      </div>
     </div>
   </div>`);
   root.appendChild(el);
   const soundBtn = $('#titleSound');
-  const paintSound = () => (soundBtn.innerHTML = save.data.sound.bgm || save.data.sound.sfx ? ICONS.soundOn : ICONS.soundOff);
+  const paintSound = () => el.classList.toggle('muted', !(save.data.sound.bgm || save.data.sound.sfx));
   paintSound();
-  soundBtn.onclick = () => {
+  const toggleSound = () => {
     const on = !(save.data.sound.bgm || save.data.sound.sfx);
     audio.setBgm(on);
     audio.setSfx(on);
     paintSound();
   };
+  soundBtn.onclick = toggleSound;
+  el.querySelectorAll<HTMLElement>('.tl .hot').forEach((b) =>
+    (b.onclick = () => {
+      if (!el.classList.contains('ready') && b.dataset.act !== 'sound' && b.dataset.act !== 'settings') return;
+      const act = b.dataset.act;
+      if (act === 'start') $<HTMLButtonElement>('#startBtn').click();
+      else if (act === 'continue') $<HTMLButtonElement>('#continueBtn').click();
+      else if (act === 'archive') $<HTMLButtonElement>('#archiveBtn').click();
+      else if (act === 'sound') toggleSound();
+      else if (act === 'settings') openSettings();
+    }),
+  );
   $('#startBtn').onclick = () => {
     audio.unlock();
     audio.play('click');
@@ -173,7 +209,7 @@ function buildTitle() {
 function playIntro(resume: boolean) {
   if (fsm.state !== GameState.TITLE) return;
   fsm.set(GameState.INTRO);
-  const el = h(`<div id="intro" class="screen">
+  const el = h(`<div id="intro" class="screen" style="--map:url(${G('intro_map')})">
     <div class="msg" id="im1">신도의 협곡에 오신 것을 환영합니다.</div>
     <div class="msg gold" id="im2">${runtime.assets.champion.name} 소환 완료</div>
   </div>`);
@@ -260,7 +296,7 @@ function buildHud() {
     <div class="vignette passthru" id="vignette"></div>
     <div class="hud-top">
       <div class="player-card passthru">
-        <div class="portrait"><img src="${championImg('idle')}" alt=""><span class="lv" id="lvl">1</span></div>
+        <div class="portrait"><img src="${G('ui_portrait')}" alt="" onerror="this.onerror=null;this.src='${svgDataUrl(championSvg('idle'))}'"><span class="lv" id="lvl">1</span></div>
         <div class="bars">
           <div class="nm">${runtime.assets.champion.name}<b id="hpText"></b></div>
           <div class="bar hp" id="hpBar"><i></i></div>
@@ -268,7 +304,7 @@ function buildHud() {
         </div>
       </div>
       <div class="objective passthru" id="objective"></div>
-      <button class="icon-btn" id="pauseBtn" aria-label="일시정지">${ICONS.pause}</button>
+      <button class="img-btn" id="pauseBtn" aria-label="일시정지"><img src="${G('ui_pause')}" alt=""></button>
     </div>
     <div class="boss-bar passthru hidden" id="bossBar">
       <div class="bn">ZERO DAY</div>
@@ -286,11 +322,11 @@ function buildHud() {
     </div>
     <div class="boss-intro passthru hidden" id="bossIntro"><div><div class="bi">ZERO DAY</div><div class="bs">보안 취약점의 화신</div></div></div>
     <div class="hud-bottom">
-      <canvas id="minimap" width="256" height="256"></canvas>
+      <div class="minimap-wrap"><canvas id="minimap" width="256" height="256"></canvas></div>
       <div class="skills">
-        <button class="skill w" id="skill-w" aria-label="W 보안 강화">${ICONS.w.replace('<svg', '<svg class="ic"')}<div class="cd"></div><span class="cdt"></span><span class="key">W</span><span class="lab">보안 강화</span></button>
-        <button class="skill q" id="skill-q" aria-label="Q 긴급 대응">${ICONS.q.replace('<svg', '<svg class="ic"')}<div class="cd"></div><span class="cdt"></span><span class="key">Q</span><span class="lab">긴급 대응</span></button>
-        <button class="skill r" id="skill-r" aria-label="R 전 부서 집결">${ICONS.r.replace('<svg', '<svg class="ic"')}<div class="cd"></div><span class="cdt"></span><span class="key">R</span><span class="lab">전 부서 집결!</span></button>
+        <button class="skill w" id="skill-w" aria-label="W 보안 강화" style="--img:url(${G('ui_w')})"><span class="face"></span><div class="cd"></div><span class="cdt"></span><span class="key">W</span><span class="lab">보안 강화</span></button>
+        <button class="skill q" id="skill-q" aria-label="Q 긴급 대응" style="--img:url(${G('ui_q')})"><span class="face"></span><div class="cd"></div><span class="cdt"></span><span class="key">Q</span><span class="lab">긴급 대응</span></button>
+        <button class="skill r" id="skill-r" aria-label="R 전 부서 집결!" style="--img:url(${G('ui_r')})"><span class="face"></span><div class="cd"></div><span class="cdt"></span><span class="key">R</span><span class="lab">전 부서 집결!</span></button>
       </div>
     </div>
     <div class="respawn passthru hidden" id="respawn"><div><div class="t1">GAME MASTER 본진 귀환 중</div><div class="t2" id="respawnT">4</div><div class="t3">레벨과 파괴한 포탑 기록은 그대로 유지됩니다</div></div></div>
@@ -478,6 +514,29 @@ function showBossIntro() {
   later(() => el.classList.add('hidden'), 2300);
 }
 
+/* ═════════════ 설정(타이틀) ═════════════ */
+function openSettings() {
+  const el = openModal(
+    'settingsModal',
+    `<h2>설정</h2><p class="sub">소리를 켜거나 끌 수 있습니다.</p>
+    <div class="stack">
+      <div class="toggle-row">
+        <button class="btn ${save.data.sound.bgm ? '' : 'off'}" data-a="bgm">배경음악</button>
+        <button class="btn ${save.data.sound.sfx ? '' : 'off'}" data-a="sfx">효과음</button>
+      </div>
+      <button class="btn primary" data-a="close">닫기</button>
+    </div>`,
+  );
+  el.onclick = (e) => {
+    const b = (e.target as HTMLElement).closest('[data-a]') as HTMLElement | null;
+    const a = b?.dataset.a;
+    if (a === 'bgm') b!.classList.toggle('off', !(audio.setBgm(!save.data.sound.bgm), save.data.sound.bgm));
+    else if (a === 'sfx') b!.classList.toggle('off', !(audio.setSfx(!save.data.sound.sfx), save.data.sound.sfx));
+    else if (a === 'close' || e.target === el) el.remove();
+    $('#title').classList.toggle('muted', !(save.data.sound.bgm || save.data.sound.sfx));
+  };
+}
+
 /* ═════════════ 일시정지 ═════════════ */
 function openModal(id: string, inner: string) {
   $('#' + id)?.remove();
@@ -588,7 +647,8 @@ function openArchive() {
   const count = runtime.videos.filter((v) => unlocked.has(v.unlockBy)).length;
   const el = openModal(
     'archiveModal',
-    `<h2>추억의 기록관</h2><p class="sub">발견한 기억 ${count} / ${runtime.videos.length}</p>
+    `<img class="archive-hero" src="${G('diorama')}" alt="" onerror="this.remove()">
+     <h2>추억의 기록관</h2><p class="sub">발견한 기억 ${count} / ${runtime.videos.length}</p>
      <div class="archive-list">${cards || '<p class="sub">등록된 영상이 없습니다. public/config/media.json 을 확인하세요.</p>'}</div>
      <div class="stack" style="margin-top:14px"><button class="btn" data-a="close">닫기</button></div>`,
   );
@@ -673,7 +733,7 @@ function showVictory() {
   const el = h(`<div id="victory" class="screen">
     <div class="rays"></div>
     <div class="vic">VICTORY</div>
-    <img class="champ" src="${championImg('victory')}" alt="">
+    ${artImg(championImg('victory'), 'victory', 'champ')}
     <div class="l1">THE LEGENDARY ${esc(runtime.assets.champion.name)}</div>
     <div class="l2">부장님, 마지막 승급전에서 승리하셨습니다.</div>
     <div class="l3">그리고 부장님께 전하고 싶은 메시지가 도착했습니다.</div>
