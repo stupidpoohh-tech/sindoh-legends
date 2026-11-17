@@ -113,6 +113,8 @@ export class GameScene extends Phaser.Scene implements LaneHost {
   private xp = 0;
   private path: Pt[] = [];
   private attackTarget: Unit | null = null;
+  /** 공격 대상 추적용 내부 경로 (사용자 이동 명령 path 와 분리) */
+  private chasePath: Pt[] = [];
   private repathTimer = 0;
   private cd: Record<SkillKey, number> = { q: 0, w: 0, r: BALANCE.skills.r.initialCooldown };
   private dead = false;
@@ -196,6 +198,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
     this.level = 1;
     this.xp = 0;
     this.path = [];
+    this.chasePath = [];
     this.attackTarget = null;
     this.cd = { q: 0, w: 0, r: BALANCE.skills.r.initialCooldown };
     this.dead = false;
@@ -675,22 +678,33 @@ export class GameScene extends Phaser.Scene implements LaneHost {
     if (isTap) {
       const t = this.pickEnemy(x, y);
       if (t) {
+        // 적 직접 선택: 이동 명령은 취소하고 사거리까지 추적 후 공격
         this.attackTarget = t;
         this.path = [];
+        this.chasePath = [];
         this.repathTimer = 0;
         this.tapMarker(t.x, t.y, 0xff3b5c);
         bus.emit('tut:attacked');
         return;
       }
     }
-    this.attackTarget = null;
     this.moveTo({ x, y }, isTap);
   }
 
+  /**
+   * 사용자 이동 명령 (맵 터치·드래그, 미니맵 터치 공통).
+   * 기존 지정 공격과 추적 경로를 취소하고 마지막 목적지로 이동한다.
+   */
   private moveTo(p: Pt, marker = true) {
     if (this.dead || !fsm.isRunning) return;
+    this.attackTarget = null;
+    this.chasePath = [];
+    this.repathTimer = 0;
     const path = this.grid.findPath(this.player, p);
-    if (!path || !path.length) return;
+    if (!path || !path.length) {
+      this.path = [];
+      return;
+    }
     this.path = path;
     if (marker) {
       const end = path[path.length - 1];
@@ -774,6 +788,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
     if (this.keys.DOWN?.isDown) ky += 1;
     if (kx || ky) {
       this.path = [];
+      this.chasePath = [];
       this.attackTarget = null;
     }
 
@@ -798,16 +813,16 @@ export class GameScene extends Phaser.Scene implements LaneHost {
       const d = p.dist(target) - target.radius;
       if (d > p.range) {
         this.repathTimer -= dt;
-        if (this.repathTimer <= 0 || !this.path.length) {
+        if (this.repathTimer <= 0 || !this.chasePath.length) {
           this.repathTimer = 0.35;
           const ang = Math.atan2(p.y - target.y, p.x - target.x);
           const goal = { x: target.x + Math.cos(ang) * (target.radius + p.range * 0.8), y: target.y + Math.sin(ang) * (target.radius + p.range * 0.8) };
-          this.path = this.grid.findPath(p, goal) || [];
+          this.chasePath = this.grid.findPath(p, goal) || [];
         }
-        this.followPath(p.speed * slow * dt);
-      } else this.path = [];
+        this.followPath(this.chasePath, p.speed * slow * dt);
+      } else this.chasePath = [];
     } else if (this.path.length) {
-      this.followPath(p.speed * slow * dt);
+      this.followPath(this.path, p.speed * slow * dt);
     }
 
     p.atkTimer -= dt;
@@ -839,17 +854,17 @@ export class GameScene extends Phaser.Scene implements LaneHost {
     p.moving = true;
   }
 
-  private followPath(step: number) {
+  private followPath(path: Pt[], step: number) {
     const p = this.player;
-    while (step > 0 && this.path.length) {
-      const wp = this.path[0];
+    while (step > 0 && path.length) {
+      const wp = path[0];
       const dx = wp.x - p.x,
         dy = wp.y - p.y;
       const d = Math.hypot(dx, dy);
       if (d <= step) {
         p.x = wp.x;
         p.y = wp.y;
-        this.path.shift();
+        path.shift();
         step -= d;
       } else {
         p.x += (dx / d) * step;
@@ -886,6 +901,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
     p.hp = 0;
     this.respawnAt = this.simTime + BALANCE.player.respawnSeconds;
     this.path = [];
+    this.chasePath = [];
     this.attackTarget = null;
     this.lightPillar(p.x, p.y, 0x00b7ff);
     this.tweens.add({ targets: p.view, alpha: 0, duration: 500 });
@@ -1302,6 +1318,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
 
     this.cinematic = true;
     this.path = [];
+    this.chasePath = [];
     audio.music('boss');
     audio.play('bossAppear');
     const cam = this.cameras.main;
