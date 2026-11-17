@@ -25,6 +25,54 @@ npm run build
 `dist/` 폴더 전체를 HTTPS 정적 호스팅(GitHub Pages, Netlify, S3+CloudFront, 사내 웹서버 등)에 올리면 됩니다.
 `base: './'` 로 빌드되므로 하위 경로(`https://example.com/sindoh/`)에서도 동작합니다.
 
+## Cloudflare Pages 배포
+
+### 방법 A. Git 연동 (권장)
+
+Cloudflare 대시보드 → Workers & Pages → Create → Pages → Connect to Git → 이 저장소 선택 후 아래처럼 설정합니다.
+
+| 항목 | 값 |
+|---|---|
+| Framework preset | None (또는 Vite) |
+| Build command | `npm run build` |
+| Build output directory | `dist` |
+| Root directory | (비워 둠) |
+| 환경 변수 | `NODE_VERSION` = `22` (`.nvmrc`도 포함되어 있음) |
+
+배포 주소는 `https://<프로젝트명>.pages.dev` 입니다. 커스텀 도메인은 프로젝트 → Custom domains 에서 연결합니다.
+브랜치를 푸시할 때마다 자동 배포되며, 기본 브랜치가 아닌 브랜치는 미리보기 주소로 배포됩니다.
+
+### 방법 B. 로컬에서 직접 업로드
+
+```bash
+npx wrangler login
+```
+
+```bash
+npm run deploy
+```
+
+### 영상 호스팅 (중요)
+
+Cloudflare Pages 는 **파일 하나당 25MiB 제한**이 있어 3분 분량 영상은 대부분 올라가지 않습니다.
+또한 영상 폴더는 `.gitignore` 처리되어 Git 연동 배포에 포함되지 않습니다. 영상은 **Cloudflare R2** 에 올리고 URL 만 지정하세요.
+
+1. R2 → 버킷 생성(예: `sindoh-media`) → 영상·썸네일 업로드
+2. 버킷 Settings → Custom Domains 에서 `media.example.com` 같은 도메인 연결 (또는 개발용 `r2.dev` 공개 주소)
+3. `public/config/media.json` 의 `src` / `poster` 를 전체 URL로 변경
+   ```json
+   "src": "https://media.example.com/workshop_01.mp4",
+   "poster": "https://media.example.com/workshop_01.jpg"
+   ```
+4. 커밋·푸시하면 재배포됩니다. (`config/*` 는 `no-cache` 헤더라 바로 반영)
+
+영상 주소를 추측하기 어렵게 하려면 파일명에 임의 문자열을 붙이세요(예: `thankyou-7f3k9q.mp4`).
+사이트 전체를 사내 인증(Cloudflare Access)으로 막을 수도 있지만, 그 경우 부장님 휴대폰에서도 로그인이 필요해 NFC로 바로 열리지 않습니다.
+
+### NFC 태그
+
+배포 후 최종 주소(예: `https://sindoh-legends.pages.dev/`)를 NFC 태그에 URI 레코드로 기록합니다.
+
 ## 조작
 
 | 동작 | 모바일 | 데스크톱 |
