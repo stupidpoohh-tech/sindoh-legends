@@ -3,6 +3,12 @@
   "edition": "private",
   "videos": [
     {
+      "id": "esports",
+      "title": "사내 e스포츠 대회",
+      "description": "부장님이 개최하신 사내 e스포츠 대회 하이라이트",
+      "unlockBy": "mem_turret"
+    },
+    {
       "id": "workshop_01",
       "title": "워크숍의 기억 · 1",
       "description": "함께 떠났던 첫 번째 워크숍의 순간들",
@@ -19,12 +25,6 @@
       "title": "워크숍의 기억 · 3",
       "description": "세 번째 워크숍의 이야기",
       "unlockBy": "mem_river"
-    },
-    {
-      "id": "esports",
-      "title": "사내 e스포츠 대회",
-      "description": "부장님이 개최하신 사내 e스포츠 대회 하이라이트",
-      "unlockBy": "mem_turret"
     }
   ],
   "ending": {

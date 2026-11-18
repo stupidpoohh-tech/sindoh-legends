@@ -952,8 +952,8 @@ function showVictory() {
     ${artImg(championImg('victory'), 'victory', 'champ')}
     <div class="l1">${esc(runtime.ending.title)}</div>
     <div class="ending-message">
-      <div class="ending-line ending-lead" style="--reveal-delay: 1.4s">${esc(runtime.ending.line1)}</div>
-      ${runtime.ending.line2.split('\n').filter(Boolean).map((line, index, lines) => `<div class="ending-line${index === lines.length - 1 ? ' ending-final' : ''}" style="--reveal-delay: ${3 + index * 1.8}s">${esc(line)}</div>`).join('')}
+      <div class="ending-line ending-lead" style="--reveal-delay: 2s">${esc(runtime.ending.line1)}</div>
+      ${runtime.ending.line2.split('\n').filter(Boolean).map((line, index, lines) => `<div class="ending-line${index === lines.length - 1 ? ' ending-final' : ''}" style="--reveal-delay: ${6 + index * 4.5}s">${esc(line)}</div>`).join('')}
     </div>
     <div class="acts">
       <button class="btn gold" data-a="title">타이틀로 돌아가기</button>

@@ -3,6 +3,12 @@
   "edition": "public",
   "videos": [
     {
+      "id": "esports",
+      "title": "비공개 기념 콘텐츠",
+      "description": "선물 버전에서만 열람할 수 있는 기록입니다.",
+      "unlockBy": "mem_turret"
+    },
+    {
       "id": "workshop_01",
       "title": "비공개 기념 콘텐츠",
       "description": "선물 버전에서만 열람할 수 있는 기록입니다.",
@@ -19,12 +25,6 @@
       "title": "비공개 기념 콘텐츠",
       "description": "선물 버전에서만 열람할 수 있는 기록입니다.",
       "unlockBy": "mem_river"
-    },
-    {
-      "id": "esports",
-      "title": "비공개 기념 콘텐츠",
-      "description": "선물 버전에서만 열람할 수 있는 기록입니다.",
-      "unlockBy": "mem_turret"
     }
   ],
   "ending": {
