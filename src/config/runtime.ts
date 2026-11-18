@@ -1,10 +1,15 @@
-/** public/config/*.json 을 실행 시점에 읽어오는 설정 로더 (빌드 없이 교체 가능) */
+/**
+ * 설정 로더.
+ * - 판별 콘텐츠(content/<EDITION>/content.json): 빌드 시 포함 — PUBLIC 빌드에는 PRIVATE 콘텐츠가 들어가지 않음
+ * - public/config/assets.json: 실행 시점에 읽음 (빌드 없이 이미지·사운드 교체 가능)
+ */
+import content from '@content/content.json';
 export interface VideoEntry {
   id: string;
   title: string;
   description: string;
   duration?: string;
-  src: string;
+  src?: string;
   poster?: string;
   unlockBy: string;
 }
@@ -14,8 +19,19 @@ export interface AssetConfig {
   audio: Record<string, string>;
 }
 
+export interface EndingText {
+  title: string;
+  line1: string;
+  line2: string;
+  thanksButton: string;
+  thanksVideo: string;
+}
+
 export const runtime = {
-  videos: [] as VideoEntry[],
+  videos: (content.videos || []) as VideoEntry[],
+  ending: content.ending as EndingText,
+  titleTag: content.titleTag as string,
+  credit: content.credit as string,
   assets: {
     champion: { name: 'GAME MASTER', affiliation: 'SINDOH', subtitle: 'THE LAST SUMMONER' },
     images: {},
@@ -34,10 +50,7 @@ async function getJson(path: string) {
 }
 
 export async function loadRuntimeConfig() {
-  const [media, assets] = await Promise.all([getJson('config/media.json'), getJson('config/assets.json')]);
-  if (media && Array.isArray(media.videos)) {
-    runtime.videos = media.videos.filter((v: any) => v && typeof v.id === 'string');
-  }
+  const assets = await getJson('config/assets.json');
   if (assets && typeof assets === 'object') {
     if (assets.champion) Object.assign(runtime.assets.champion, assets.champion);
     if (assets.images) runtime.assets.images = assets.images;

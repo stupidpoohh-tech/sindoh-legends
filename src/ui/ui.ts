@@ -243,7 +243,7 @@ function buildTitle() {
     <div class="tp">
       <div class="clouds"></div>
       <div class="title-top">
-        <span class="tag">${runtime.assets.champion.affiliation} · RETIREMENT EDITION</span>
+        <span class="tag">${runtime.assets.champion.affiliation} · ${esc(runtime.titleTag)}</span>
         <button class="img-btn" id="titleSound" aria-label="소리 켜기/끄기"><img src="${G('ui_sound')}" alt=""><i class="mute"></i></button>
       </div>
       <img class="logo-img" src="${G('title_logo')}" alt="SINDOH LEGENDS - THE LAST SUMMONER"
@@ -258,7 +258,7 @@ function buildTitle() {
         <button class="pill-btn gold hidden" id="continueBtn">이어하기</button>
         <button class="pill-btn" id="startBtn" disabled><span>불러오는 중…</span></button>
         <button class="pill-btn small" id="archiveBtn">${ICONS.archive}<span>추억의 기록관</span></button>
-        <div class="credit">본 게임은 퇴직 기념을 위해 제작된 비상업용 게임입니다.</div>
+        <div class="credit">${esc(runtime.credit)}</div>
       </div>
     </div>
     <!-- 가로 화면: 시작 화면 일러스트 + 터치 영역 -->
@@ -812,7 +812,7 @@ function openArchive() {
     'archiveModal',
     `<img class="archive-hero" src="${G('diorama')}" alt="" onerror="this.remove()">
      <h2>추억의 기록관</h2><p class="sub">발견한 기억 ${count} / ${runtime.videos.length}</p>
-     <div class="archive-list">${cards || '<p class="sub">등록된 영상이 없습니다. public/config/media.json 을 확인하세요.</p>'}</div>
+     <div class="archive-list">${cards || '<p class="sub">등록된 기록이 없습니다.</p>'}</div>
      <div class="stack" style="margin-top:14px"><button class="btn" data-a="close">닫기</button></div>`,
   );
   el.onclick = (e) => {
@@ -916,10 +916,15 @@ function openVideo(v: VideoEntry, onClose?: () => void) {
       pv.initPrivateAuth().then(() => (pv.isAuthed() ? play() : askCode()));
     });
   } else if (v.src) {
-    const tryPlay = () => mount(v.src, () => showError('영상을 불러오지 못했습니다.', tryPlay));
+    const tryPlay = () => mount(v.src!, () => showError('영상을 불러오지 못했습니다.', tryPlay));
     tryPlay();
   } else {
-    placeholder('포트폴리오 공개 버전에서는 영상이 제공되지 않습니다.');
+    // PUBLIC: 비공개 기념 콘텐츠 안내
+    fsBtn.style.visibility = 'hidden';
+    stage.innerHTML = `<div class="vplaceholder private-note"><div class="big">${ICONS.lock}</div>
+      <h3>비공개 기념 콘텐츠</h3>
+      <p>이 자리에는 퇴직 선물로 함께 전달된 기념 영상이 들어갑니다.<br>
+      실제 인물이 등장하는 영상과 개인적인 메시지는 선물 버전에서만 열람할 수 있습니다.</p></div>`;
   }
   const close = () => {
     unmount();
@@ -951,11 +956,11 @@ function showVictory() {
     <div class="rays"></div>
     <div class="vic">VICTORY</div>
     ${artImg(championImg('victory'), 'victory', 'champ')}
-    <div class="l1">THE LEGENDARY ${esc(runtime.assets.champion.name)}</div>
-    <div class="l2">부장님, 마지막 승급전에서 승리하셨습니다.</div>
-    <div class="l3">그리고 부장님께 전하고 싶은 메시지가 도착했습니다.</div>
+    <div class="l1">${esc(runtime.ending.title)}</div>
+    <div class="l2">${esc(runtime.ending.line1)}</div>
+    <div class="l3">${esc(runtime.ending.line2)}</div>
     <div class="acts">
-      <button class="btn gold" data-a="thanks">${ICONS.play}<span>감사 메시지 열기</span></button>
+      ${runtime.ending.thanksButton ? `<button class="btn gold" data-a="thanks">${ICONS.play}<span>${esc(runtime.ending.thanksButton)}</span></button>` : ''}
       <button class="btn" data-a="archive">${ICONS.archive}<span>추억의 기록관</span></button>
       <button class="btn ghost" data-a="again">다시 플레이</button>
     </div>
@@ -975,9 +980,8 @@ function showVictory() {
     if (!a) return;
     audio.play('click');
     if (a === 'thanks') {
-      const v = runtime.videos.find((x) => x.id === 'thankyou') || runtime.videos.find((x) => x.unlockBy === 'mem_victory');
+      const v = runtime.videos.find((x) => x.id === runtime.ending.thanksVideo);
       if (v) openVideo(v);
-      else openVideo({ id: 'thankyou', title: '부장님께 드리는 감사 메시지', description: '함께한 동료들이 전하는 마음', src: '', unlockBy: 'mem_victory' });
     } else if (a === 'archive') openArchive();
     else if (a === 'again') {
       el.remove();

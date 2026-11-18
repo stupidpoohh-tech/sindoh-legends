@@ -1,0 +1,45 @@
+{
+  "_comment": "PUBLIC(포트폴리오) 판 콘텐츠. 영상·개인적인 감사 메시지는 포함하지 않습니다. 기록관 칸은 '비공개 기념 콘텐츠' 안내로만 표시됩니다.",
+  "edition": "public",
+  "videos": [
+    {
+      "id": "workshop_01",
+      "title": "비공개 기념 콘텐츠",
+      "description": "선물 버전에서만 열람할 수 있는 기록입니다.",
+      "unlockBy": "mem_base"
+    },
+    {
+      "id": "workshop_02",
+      "title": "비공개 기념 콘텐츠",
+      "description": "선물 버전에서만 열람할 수 있는 기록입니다.",
+      "unlockBy": "mem_jungle"
+    },
+    {
+      "id": "workshop_03",
+      "title": "비공개 기념 콘텐츠",
+      "description": "선물 버전에서만 열람할 수 있는 기록입니다.",
+      "unlockBy": "mem_river"
+    },
+    {
+      "id": "esports",
+      "title": "비공개 기념 콘텐츠",
+      "description": "선물 버전에서만 열람할 수 있는 기록입니다.",
+      "unlockBy": "mem_turret"
+    },
+    {
+      "id": "thankyou",
+      "title": "비공개 기념 콘텐츠",
+      "description": "선물 버전에서만 열람할 수 있는 기록입니다.",
+      "unlockBy": "mem_victory"
+    }
+  ],
+  "ending": {
+    "title": "THE LEGENDARY GAME MASTER",
+    "line1": "마지막 승급전에서 승리했습니다.",
+    "line2": "플레이해 주셔서 감사합니다.",
+    "thanksButton": "",
+    "thanksVideo": ""
+  },
+  "titleTag": "PORTFOLIO EDITION",
+  "credit": "퇴직 기념 선물로 제작한 게임의 포트폴리오 공개 버전입니다. 기념 영상 등 비공개 콘텐츠는 포함되어 있지 않습니다."
+}

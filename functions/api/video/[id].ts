@@ -1,5 +1,5 @@
 import { Env, isAuthed } from '../../_lib/auth';
-import { VIDEO_KEYS } from '../../_lib/videos';
+import { videoKey } from '../../_lib/videos';
 
 type Ctx = { request: Request; env: Env; params: { id: string } };
 
@@ -26,7 +26,7 @@ function parseRange(h: string, size: number): [number, number] | null {
 
 async function serve({ request, env, params }: Ctx, headOnly: boolean) {
   if (!(await isAuthed(request, env))) return plain(401, '인증이 필요합니다.');
-  const name = VIDEO_KEYS[params.id];
+  const name = videoKey(env, params.id);
   if (!name || !env.VIDEOS) return plain(404, '영상을 찾을 수 없습니다.');
   // 업로드 도구에 따라 한글 키가 URL 인코딩되어 저장되는 경우도 함께 확인
   let key = name;

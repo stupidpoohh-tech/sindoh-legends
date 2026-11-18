@@ -117,31 +117,43 @@ Cloudflare Pages 는 **파일 하나당 25MiB 제한**이 있어 3분 분량 영
 영상은 GitHub·정적 빌드에 넣지 않고 **비공개 R2 버킷(`sindoh-legends-videos`, 바인딩 `VIDEOS`)** 에 둡니다.
 선물(PRIVATE) 배포에서만 인증을 거친 사용자에게 `/api/video/<id>` 로 스트리밍합니다(HTTP Range·206 지원, `video/mp4`).
 
-| 게임 id | R2 객체 키 (`functions/_lib/videos.ts`) | 해금 조건 |
+| 게임 id | R2 객체 키 (PRIVATE 프로젝트 변수 `VIDEO_KEYS`) | 해금 조건 |
 |---|---|---|
-| workshop_01 | 워크샵1.mp4 | 아군 본진의 기록 상자 |
-| workshop_02 | 워크샵2.mp4 | 숲속의 기억 구슬 |
-| workshop_03 | 워크샵3.mp4 | 강가의 기념비 |
-| esports | 게임대회.mp4 | 첫 적 포탑 파괴 |
-| thankyou | 감사영상.mp4 (업로드 필요) | 최종 승리 |
+| workshop_01 | (VIDEO_KEYS) | 아군 본진의 기록 상자 |
+| workshop_02 | (VIDEO_KEYS) | 숲속의 기억 구슬 |
+| workshop_03 | (VIDEO_KEYS) | 강가의 기념비 |
+| esports | (VIDEO_KEYS) | 첫 적 포탑 파괴 |
+| thankyou | (VIDEO_KEYS, 업로드 필요) | 최종 승리 |
 
-- 제목·설명·해금 조건: `public/config/media.json` (경로는 비워 둠)
-- 파일 이름을 바꾸거나 새 영상을 올리면 `functions/_lib/videos.ts` 의 키만 맞추면 됩니다.
-- 3개 영상(워크샵1·2, 게임대회)은 MP4 인덱스(moov)가 파일 끝에 있어 첫 로딩이 조금 느릴 수 있습니다.
+- 제목·설명·해금 조건: `content/private/content.json`
+- 파일 이름을 바꾸거나 새 영상을 올리면 PRIVATE 프로젝트의 `VIDEO_KEYS`(JSON) 만 고치고 재배포하면 됩니다.
+- 일부 영상은 MP4 인덱스(moov)가 파일 끝에 있어 첫 로딩이 조금 느릴 수 있습니다.
   `ffmpeg -i in.mp4 -c copy -movflags +faststart out.mp4` 로 변환해 다시 올리면 개선됩니다.
 
-#### 배포 판(EDITION)
+#### 배포 판 — 하나의 코드, 두 개의 Pages 프로젝트
 
-| 판 | 설정 | 영상 |
+| | PUBLIC (포트폴리오) | PRIVATE (부장님 선물) |
 |---|---|---|
-| PUBLIC (기본값, 포트폴리오) | `EDITION` 미설정 | `/api/*` 전부 404, 번들에 영상 API 코드·경로 없음 |
-| PRIVATE (선물) | `EDITION=private` + `GIFT_CODE` + `SESSION_SECRET` | 입장 코드 인증 후 재생 |
+| Pages 프로젝트 | `sindoh-legends-portfolio` | `sindoh-legends` |
+| 주소 | https://sindoh-legends-portfolio.pages.dev | https://sindoh-legends.pages.dev (NFC: `/?k=<입장코드>`) |
+| 환경 변수 | 없음 (`EDITION` 미설정 = 공개판) | `EDITION=private`, 암호화: `GIFT_CODE`, `SESSION_SECRET`, `VIDEO_KEYS` |
+| R2 바인딩 | 없음 | `VIDEOS` → `sindoh-legends-videos` |
+| 접근 | 누구나 | 사이트 전체 잠금 — 입장 코드 확인 후 서명 쿠키(180일) |
+| 기록관·엔딩 | 비공개 기념 콘텐츠 안내, 일반 엔딩 | 영상 5개, 감사 엔딩 |
+| `/api/*` | 404 | 인증 시에만 동작 |
 
-#### 인증 방식
+두 프로젝트 모두 같은 브랜치에 연결되어 푸시할 때마다 각각 빌드·배포됩니다.
+로컬에서 판별로 빌드하려면 `npm run build`(PUBLIC) / `EDITION=private npm run build`(PRIVATE).
+공개 범위 점검표는 `CONTENT_SCOPE.md` 를 참고하세요.
 
-- 입장 코드(`GIFT_CODE`)를 서버에서 검증한 뒤 서명된 HttpOnly·Secure 쿠키(30일)를 발급합니다. 영상 API 는 매 요청 쿠키 서명·만료를 검증하며, 인증이 없으면 401 입니다.
-- NFC 태그 주소에 코드를 넣으면 자동으로 인증됩니다: `https://sindoh-legends.pages.dev/?k=<입장코드>` (인증 후 주소창에서 코드가 지워짐)
-- 코드 없이 접속한 사람은 영상을 열 때 입장 코드 입력 화면이 나옵니다.
+#### 인증 방식 (PRIVATE)
+
+- `functions/_middleware.ts` 가 페이지·이미지·스크립트·API 를 포함한 **모든 요청**을 서버에서 검사합니다.
+  쿠키가 없으면 입장 코드 화면(401)만 보입니다.
+- NFC 주소 `/?k=<입장코드>` 로 접속하면 서버가 코드를 검증해 HttpOnly·Secure 쿠키를 발급하고 코드 없는 주소로 이동시킵니다.
+- 영상 API 는 매 요청 쿠키 서명·만료를 다시 검증하고, R2 버킷은 공개 URL 없이 이 함수에서만 읽힙니다.
+- 입장 코드를 바꾸려면 PRIVATE 프로젝트의 `GIFT_CODE` 를 바꾸고 재배포한 뒤 NFC 태그를 다시 쓰면 됩니다.
+  `SESSION_SECRET` 을 바꾸면 기존에 발급된 쿠키가 모두 무효화됩니다.
 
 ### 일러스트·스프라이트 — `art-src/` → `public/assets/game/`
 

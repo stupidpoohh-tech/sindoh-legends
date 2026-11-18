@@ -9,10 +9,11 @@ export interface Env {
   GIFT_CODE?: string;
   SESSION_SECRET?: string;
   VIDEOS?: any; // R2Bucket
+  VIDEO_KEYS?: string;
 }
 
 export const COOKIE = 'sl_auth';
-const MAX_AGE = 60 * 60 * 24 * 30; // 30일
+const MAX_AGE = 60 * 60 * 24 * 180; // 180일 (선물 받은 기기에서 다시 묻지 않도록)
 const enc = new TextEncoder();
 
 function b64url(buf: ArrayBuffer) {
