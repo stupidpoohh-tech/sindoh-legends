@@ -189,6 +189,7 @@ function buildTitle() {
   <div id="title" class="screen poster-title" aria-label="SINDOH LEGENDS 시작 화면">
     <!-- 세로 화면: 레이어 구성 -->
     <div class="tp">
+      <div class="welcome-fx" aria-hidden="true"><i class="welcome-glow"></i><i class="welcome-spark" style="--x:18%;--delay:-0s;--duration:7s"></i><i class="welcome-spark" style="--x:33%;--delay:-1.7s;--duration:8s"></i><i class="welcome-spark" style="--x:47%;--delay:-3.4s;--duration:9s"></i><i class="welcome-spark" style="--x:62%;--delay:-5.1s;--duration:7s"></i><i class="welcome-spark" style="--x:76%;--delay:-6.8s;--duration:8s"></i><i class="welcome-spark" style="--x:86%;--delay:-8.5s;--duration:9s"></i></div>
       <div class="clouds"></div>
       <div class="title-top">
         ${runtime.titleTag ? `<span class="tag">${runtime.assets.champion.affiliation} · ${esc(runtime.titleTag)}</span>` : '<span></span>'}

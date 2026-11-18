@@ -25,7 +25,34 @@ h1{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
 .entry-panel p{margin-bottom:12px}.entry-panel input{box-sizing:border-box;width:100%;background:#102754cc}.entry-panel button{width:100%}
 @media(orientation:portrait){body{background-size:100% auto}main{justify-content:flex-start;padding-top:112vw}.entry-panel p{word-break:keep-all}}
 @media(orientation:landscape){body{background-position:15% top}main{align-items:flex-end;justify-content:center;padding-right:5vw}.entry-panel{width:min(43vw,360px)}}
-}</style></head><body><main>
+}
+/* Gentle mobile-only welcome effects; all decoration is non-interactive. */
+.welcome-fx { display:none; }
+@media (max-width:600px), (pointer:coarse) {
+  .welcome-fx { display:block; position:absolute; top:0; left:0; width:100%; height:177.68vw; overflow:hidden; z-index:1; }
+  .welcome-fx, #ui .welcome-fx, .welcome-fx *, #ui .welcome-fx * { pointer-events:none !important; }
+  .welcome-glow { position:absolute; left:28.5%; top:26%; width:20%; aspect-ratio:1; border-radius:50%; background:radial-gradient(circle,#d4ffff88, #2feaff44 35%,transparent 70%); mix-blend-mode:screen; transform:translate(-50%,-50%); animation:welcomePulse 4.8s ease-in-out infinite; }
+  .welcome-spark { position:absolute; left:var(--x); top:78%; width:3px; height:3px; border-radius:50%; background:#ffe8a0; box-shadow:0 0 7px 2px #ffd76b66; opacity:0; animation:welcomeRise var(--duration) linear var(--delay) infinite; }
+  #title.poster-title .title-actions, .entry-panel { position:relative; z-index:2; }
+  #title.poster-title .title-actions { position:absolute; }
+  #title.poster-title .title-actions .pill-btn, .entry-panel button { animation:welcomeEnter .9s ease both, welcomeFloat 4.2s ease-in-out .9s infinite; }
+  #title.poster-title .title-actions .pill-btn:nth-of-type(3) { animation-delay:.12s,1.02s; }
+  #title.poster-title .title-actions .pill-btn:nth-of-type(4) { animation-delay:.24s,1.14s; }
+  #title.poster-title .title-actions .pill-btn:active, .entry-panel button:active { animation-play-state:paused; }
+}
+@media (orientation:landscape) and (pointer:coarse), (orientation:landscape) and (max-width:600px) {
+  .welcome-fx { width:56.28vh; height:100vh; left:calc((100% - 56.28vh) * .15); }
+  #title.poster-title .title-actions { position:relative; }
+}
+@keyframes welcomeFloat { 0%,100% { translate:0 0; } 50% { translate:0 -3px; } }
+@keyframes welcomeEnter { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+@keyframes welcomePulse { 0%,100% { opacity:.35; scale:1; } 50% { opacity:.8; scale:1.08; } }
+@keyframes welcomeRise { 0% { opacity:0; transform:translate(0,0); } 20% { opacity:.7; } 75% { opacity:.4; } 100% { opacity:0; transform:translate(12px,-110px); } }
+@media (prefers-reduced-motion:reduce) {
+  .welcome-fx { display:none; }
+  #title.poster-title .title-actions .pill-btn, .entry-panel button { animation:none; }
+}
+</style></head><body><main><div class="welcome-fx" aria-hidden="true"><i class="welcome-glow"></i><i class="welcome-spark" style="--x:18%;--delay:-0s;--duration:7s"></i><i class="welcome-spark" style="--x:33%;--delay:-1.7s;--duration:8s"></i><i class="welcome-spark" style="--x:47%;--delay:-3.4s;--duration:9s"></i><i class="welcome-spark" style="--x:62%;--delay:-5.1s;--duration:7s"></i><i class="welcome-spark" style="--x:76%;--delay:-6.8s;--duration:8s"></i><i class="welcome-spark" style="--x:86%;--delay:-8.5s;--duration:9s"></i></div>
 <h1>SINDOH LEGENDS</h1><div class="entry-panel"><p>선물 받은 분만 입장할 수 있는 비공개 버전입니다.<br>입장 코드를 입력해 주세요.</p>
 <form method="post" action="/__enter"><input name="code" type="password" autocomplete="off" placeholder="입장 코드" aria-label="입장 코드" required>
 <p class="err">${msg}</p><button type="submit">입장</button></form></div></main></body></html>`;
