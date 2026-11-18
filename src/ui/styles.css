@@ -803,3 +803,21 @@ body { -webkit-font-smoothing: antialiased; }
   #victory *, #victory .acts { animation: none !important; }
   #victory .confetti { display: none; }
 }
+
+/* Shared welcome illustration: the supplied artwork already includes logo and hero. */
+#title.poster-title { background: #062353; }
+#title.poster-title .tl, #title.poster-title .clouds, #title.poster-title .logo-img, #title.poster-title .hero { display: none; }
+#title.poster-title .tp { display: flex; position: absolute; inset: 0; align-items: center; justify-content: flex-end; background: #062353 url('/assets/game/welcome-poster.jpg') center top / auto 100% no-repeat; overflow-y: auto; padding: calc(12px + var(--safe-t)) calc(16px + var(--safe-r)) calc(22px + var(--safe-b)) calc(16px + var(--safe-l)); }
+#title.poster-title .title-top { position: absolute; inset: calc(10px + var(--safe-t)) calc(12px + var(--safe-r)) auto calc(12px + var(--safe-l)); width: auto; }
+#title.poster-title .title-top .tag { background: rgba(3,17,44,.7); padding: 6px 9px; border-radius: 8px; letter-spacing: .05em; }
+#title.poster-title .title-actions { flex: none; width: min(100%, 360px); margin-top: auto; padding: 14px; border-radius: 22px; background: rgba(3,17,44,.72); border: 1px solid rgba(255,223,144,.45); box-shadow: 0 12px 30px #0005; }
+#title.poster-title .credit { display: block; font-size: 11px; line-height: 1.45; margin: 0; }
+#title.poster-title .pill-btn { min-height: 48px; font-size: 19px; }
+#title.poster-title .pill-btn.small { min-height: 42px; font-size: 16px; }
+@media (orientation: landscape) {
+  #title.poster-title .tp { background-position: 15% top; background-size: auto 100%; align-items: flex-end; justify-content: center; padding-right: max(5vw, var(--safe-r)); }
+  #title.poster-title .title-actions { width: min(43vw, 360px); margin: auto 0; }
+}
+@media (orientation: portrait) {
+  #title.poster-title .tp { background-size: 100% auto; }
+}

@@ -16,10 +16,17 @@ main{min-height:100%;display:flex;flex-direction:column;align-items:center;justi
 h1{margin:0;font-size:26px;letter-spacing:.06em;color:#ffe28a}p{margin:0;color:#c6d3e4;font-size:14px;line-height:1.6}
 input{width:min(80vw,280px);min-height:48px;border-radius:12px;border:1.5px solid #e8b94a;background:rgba(255,255,255,.08);color:#fff;font-size:17px;text-align:center}
 button{min-width:160px;min-height:48px;border-radius:999px;border:2px solid #e8b94a;background:linear-gradient(180deg,#2f56c4,#122c78);color:#fff;font-size:16px;font-weight:700}
-.err{color:#ffb0bb;min-height:20px}</style></head><body><main>
-<h1>SINDOH LEGENDS</h1><p>선물 받은 분만 입장할 수 있는 비공개 버전입니다.<br>입장 코드를 입력해 주세요.</p>
+.err{color:#ffb0bb;min-height:20px}
+body{background:#062353 url('/assets/game/welcome-poster.jpg') center top / auto 100% no-repeat}
+main{justify-content:flex-end;padding:24px 16px max(24px,env(safe-area-inset-bottom))}
+h1{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+.entry-panel{width:min(100%,360px);padding:20px;box-sizing:border-box;border-radius:22px;border:1px solid #e8b94a88;background:#03112ccc;box-shadow:0 12px 30px #0005}
+.entry-panel p{margin-bottom:12px}.entry-panel input{box-sizing:border-box;width:100%;background:#102754cc}.entry-panel button{width:100%}
+@media(orientation:portrait){body{background-size:100% auto}}
+@media(orientation:landscape){body{background-position:15% top}main{align-items:flex-end;justify-content:center;padding-right:5vw}.entry-panel{width:min(43vw,360px)}}</style></head><body><main>
+<h1>SINDOH LEGENDS</h1><div class="entry-panel"><p>선물 받은 분만 입장할 수 있는 비공개 버전입니다.<br>입장 코드를 입력해 주세요.</p>
 <form method="post" action="/__enter"><input name="code" type="password" autocomplete="off" placeholder="입장 코드" aria-label="입장 코드" required>
-<p class="err">${msg}</p><button type="submit">입장</button></form></main></body></html>`;
+<p class="err">${msg}</p><button type="submit">입장</button></form></div></main></body></html>`;
 
 const lockPage = (msg = '', status = 401) =>
   new Response(LOCK_HTML(msg), { status, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow' } });
@@ -29,6 +36,8 @@ const redirectHome = async (env: Env) =>
 
 export const onRequest = async ({ request, env, next }: Ctx) => {
   if (env.EDITION !== 'private') return next();
+  // This shared welcome artwork is also public in the portfolio edition.
+  if (new URL(request.url).pathname === '/assets/game/welcome-poster.jpg' && ['GET', 'HEAD'].includes(request.method)) return next();
   // 비공개 판인데 비밀 값이 빠져 있으면 공개하지 않고 잠금 유지
   if (!configured(env)) return new Response('Private edition is not configured.', { status: 503, headers: { 'Cache-Control': 'no-store' } });
   const url = new URL(request.url);

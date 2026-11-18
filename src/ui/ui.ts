@@ -186,7 +186,7 @@ function requestPortrait() {
 function buildTitle() {
   const name = runtime.assets.champion.name;
   const el = h(`
-  <div id="title" class="screen">
+  <div id="title" class="screen poster-title" aria-label="SINDOH LEGENDS 시작 화면">
     <!-- 세로 화면: 레이어 구성 -->
     <div class="tp">
       <div class="clouds"></div>
@@ -206,6 +206,7 @@ function buildTitle() {
         <button class="pill-btn gold hidden" id="continueBtn">이어하기</button>
         <button class="pill-btn" id="startBtn" disabled><span>불러오는 중…</span></button>
         <button class="pill-btn small" id="archiveBtn">${ICONS.archive}<span>추억의 기록관</span></button>
+        <button class="pill-btn small" id="titleSettings">설정</button>
         <div class="credit">${esc(runtime.credit)}</div>
       </div>
     </div>
@@ -234,6 +235,7 @@ function buildTitle() {
     paintSound();
   };
   soundBtn.onclick = toggleSound;
+  $('#titleSettings').onclick = openSettings;
   el.querySelectorAll<HTMLElement>('.tl .hot').forEach((b) =>
     (b.onclick = () => {
       if (!el.classList.contains('ready') && b.dataset.act !== 'sound' && b.dataset.act !== 'settings') return;
