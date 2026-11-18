@@ -189,7 +189,7 @@ function buildTitle() {
   <div id="title" class="screen poster-title" aria-label="SINDOH LEGENDS 시작 화면">
     <!-- 세로 화면: 레이어 구성 -->
     <div class="tp">
-      <div class="welcome-fx" aria-hidden="true"><i class="welcome-glow"></i><i class="welcome-spark" style="--x:18%;--delay:-0s;--duration:7s"></i><i class="welcome-spark" style="--x:33%;--delay:-1.7s;--duration:8s"></i><i class="welcome-spark" style="--x:47%;--delay:-3.4s;--duration:9s"></i><i class="welcome-spark" style="--x:62%;--delay:-5.1s;--duration:7s"></i><i class="welcome-spark" style="--x:76%;--delay:-6.8s;--duration:8s"></i><i class="welcome-spark" style="--x:86%;--delay:-8.5s;--duration:9s"></i></div>
+      <div class="welcome-fx" aria-hidden="true"><i class="welcome-glow"></i><i class="welcome-portal"></i><i class="welcome-ring"></i><i class="welcome-twinkle twinkle-a"></i><i class="welcome-twinkle twinkle-b"></i><i class="welcome-twinkle twinkle-c"></i><i class="welcome-spark" style="--x:18%;--delay:-0s;--duration:7s"></i><i class="welcome-spark" style="--x:33%;--delay:-1.7s;--duration:8s"></i><i class="welcome-spark" style="--x:47%;--delay:-3.4s;--duration:9s"></i><i class="welcome-spark" style="--x:62%;--delay:-5.1s;--duration:7s"></i><i class="welcome-spark" style="--x:76%;--delay:-6.8s;--duration:8s"></i><i class="welcome-spark" style="--x:86%;--delay:-8.5s;--duration:9s"></i></div>
       <div class="clouds"></div>
       <div class="title-top">
         ${runtime.titleTag ? `<span class="tag">${runtime.assets.champion.affiliation} · ${esc(runtime.titleTag)}</span>` : '<span></span>'}
@@ -215,6 +215,7 @@ function buildTitle() {
     <div class="tl">
       <div class="tl-bg"></div>
       <div class="tl-art">
+        <div class="welcome-fx" aria-hidden="true"><i class="welcome-glow"></i><i class="welcome-portal"></i><i class="welcome-ring"></i><i class="welcome-twinkle twinkle-a"></i><i class="welcome-twinkle twinkle-b"></i><i class="welcome-twinkle twinkle-c"></i><i class="welcome-spark" style="--x:18%;--delay:-0s;--duration:7s"></i><i class="welcome-spark" style="--x:33%;--delay:-1.7s;--duration:8s"></i><i class="welcome-spark" style="--x:47%;--delay:-3.4s;--duration:9s"></i><i class="welcome-spark" style="--x:62%;--delay:-5.1s;--duration:7s"></i><i class="welcome-spark" style="--x:76%;--delay:-6.8s;--duration:8s"></i><i class="welcome-spark" style="--x:86%;--delay:-8.5s;--duration:9s"></i></div>
         <img src="${G('title_full')}" alt="SINDOH LEGENDS 시작 화면" draggable="false">
         <button class="hot hidden" data-act="continue" id="continueBtn2" style="left:31%;top:42.5%;width:40%;height:11%">이어하기</button>
         <button class="hot invisible" data-act="start" style="left:31%;top:56%;width:40%;height:14%" aria-label="협곡 입장"></button>

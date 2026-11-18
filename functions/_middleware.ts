@@ -52,7 +52,28 @@ h1{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
   .welcome-fx { display:none; }
   #title.poster-title .title-actions .pill-btn, .entry-panel button { animation:none; }
 }
-</style></head><body><main><div class="welcome-fx" aria-hidden="true"><i class="welcome-glow"></i><i class="welcome-spark" style="--x:18%;--delay:-0s;--duration:7s"></i><i class="welcome-spark" style="--x:33%;--delay:-1.7s;--duration:8s"></i><i class="welcome-spark" style="--x:47%;--delay:-3.4s;--duration:9s"></i><i class="welcome-spark" style="--x:62%;--delay:-5.1s;--duration:7s"></i><i class="welcome-spark" style="--x:76%;--delay:-6.8s;--duration:8s"></i><i class="welcome-spark" style="--x:86%;--delay:-8.5s;--duration:9s"></i></div>
+
+/* Light follows the artwork, with separate anchors for the original desktop scene. */
+.welcome-fx { --crystal-x:28.5%; --crystal-y:26%; --portal-x:29%; --portal-y:50%; --star-a:31%; --star-b:69%; --star-y:9%; }
+#title .tl-art .welcome-fx { display:block; width:100%; height:100%; left:0; top:0; position:absolute; overflow:hidden; z-index:1; --crystal-x:14%; --crystal-y:23%; --portal-x:13%; --portal-y:69%; --star-a:37%; --star-b:66%; --star-y:13%; }
+#title .tl-art .hot, #title .tl-art .tl-loading { z-index:2; }
+.welcome-fx, #ui .welcome-fx, .welcome-fx *, #ui .welcome-fx * { pointer-events:none !important; }
+.welcome-fx .welcome-glow { position:absolute; left:var(--crystal-x); top:var(--crystal-y); width:24%; aspect-ratio:1; border-radius:50%; background:radial-gradient(circle,#eaffffbb,#29dfff66 30%,transparent 68%); transform:translate(-50%,-50%); mix-blend-mode:screen; animation:welcomePulse 4.8s ease-in-out infinite; }
+.welcome-portal { position:absolute; left:var(--portal-x); top:var(--portal-y); width:18%; height:15%; border-radius:50%; background:radial-gradient(ellipse,#bfffffaa,#22caff66 35%,transparent 72%); transform:translate(-50%,-50%); mix-blend-mode:screen; animation:portalBreathe 5.5s ease-in-out -1s infinite; }
+.welcome-ring { position:absolute; left:var(--portal-x); top:calc(var(--portal-y) + 4%); width:17%; height:3%; border:1px solid #99faff; border-radius:50%; box-shadow:0 0 10px #44dcff88; animation:portalRipple 5.5s ease-out infinite; }
+.welcome-twinkle { position:absolute; width:4%; aspect-ratio:1; background:radial-gradient(ellipse 12% 50% at center,#fffbe4 0%,#ffe69c88 40%,transparent 75%),radial-gradient(ellipse 50% 12% at center,#fffbe4 0%,#ffe69c88 40%,transparent 75%); animation:goldTwinkle 6s ease-in-out infinite; }
+.twinkle-a { left:var(--star-a); top:var(--star-y); }
+.twinkle-b { left:var(--star-b); top:calc(var(--star-y) + 5%); animation-delay:-3s; }
+.twinkle-c { left:calc(var(--crystal-x) - 3%); top:calc(var(--crystal-y) - 4%); animation-delay:-1.5s; }
+.welcome-fx .welcome-spark { position:absolute; left:var(--x); top:78%; width:4px; height:4px; border-radius:50%; background:#fff0b5; box-shadow:0 0 10px 3px #ffc94a77; opacity:0; animation:welcomeRise var(--duration) linear var(--delay) infinite; }
+@keyframes portalBreathe { 0%,100% { opacity:.45; scale:.9; } 50% { opacity:.95; scale:1.12; } }
+@keyframes portalRipple { 0% { transform:translate(-50%,-50%) scale(.6); opacity:0; } 20% { opacity:.6; } 100% { transform:translate(-50%,-50%) scale(1.65); opacity:0; } }
+@keyframes goldTwinkle { 0%,65%,100% { opacity:0; transform:scale(.45) rotate(0); } 78% { opacity:.9; transform:scale(1) rotate(12deg); } }
+@media (prefers-reduced-motion:reduce) {
+  #title .tl-art .welcome-fx { display:none; }
+  .welcome-fx * { animation:none !important; }
+}
+</style></head><body><main><div class="welcome-fx" aria-hidden="true"><i class="welcome-glow"></i><i class="welcome-portal"></i><i class="welcome-ring"></i><i class="welcome-twinkle twinkle-a"></i><i class="welcome-twinkle twinkle-b"></i><i class="welcome-twinkle twinkle-c"></i><i class="welcome-spark" style="--x:18%;--delay:-0s;--duration:7s"></i><i class="welcome-spark" style="--x:33%;--delay:-1.7s;--duration:8s"></i><i class="welcome-spark" style="--x:47%;--delay:-3.4s;--duration:9s"></i><i class="welcome-spark" style="--x:62%;--delay:-5.1s;--duration:7s"></i><i class="welcome-spark" style="--x:76%;--delay:-6.8s;--duration:8s"></i><i class="welcome-spark" style="--x:86%;--delay:-8.5s;--duration:9s"></i></div>
 <h1>SINDOH LEGENDS</h1><div class="entry-panel"><p>선물 받은 분만 입장할 수 있는 비공개 버전입니다.<br>입장 코드를 입력해 주세요.</p>
 <form method="post" action="/__enter"><input name="code" type="password" autocomplete="off" placeholder="입장 코드" aria-label="입장 코드" required>
 <p class="err">${msg}</p><button type="submit">입장</button></form></div></main></body></html>`;
