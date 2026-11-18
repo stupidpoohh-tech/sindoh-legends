@@ -17,7 +17,7 @@ h1{margin:0;font-size:26px;letter-spacing:.06em;color:#ffe28a}p{margin:0;color:#
 input{width:min(80vw,280px);min-height:48px;border-radius:12px;border:1.5px solid #e8b94a;background:rgba(255,255,255,.08);color:#fff;font-size:17px;text-align:center}
 button{min-width:160px;min-height:48px;border-radius:999px;border:2px solid #e8b94a;background:linear-gradient(180deg,#2f56c4,#122c78);color:#fff;font-size:16px;font-weight:700}
 .err{color:#ffb0bb;min-height:20px}</style></head><body><main>
-<h1>SINDOH LEGENDS</h1><p>선물 받은 분만 입장할 수 있는 비공개 버전입니다.<br>NFC 태그로 접속하거나 입장 코드를 입력해 주세요.</p>
+<h1>SINDOH LEGENDS</h1><p>선물 받은 분만 입장할 수 있는 비공개 버전입니다.<br>입장 코드를 입력해 주세요.</p>
 <form method="post" action="/__enter"><input name="code" type="password" autocomplete="off" placeholder="입장 코드" aria-label="입장 코드" required>
 <p class="err">${msg}</p><button type="submit">입장</button></form></main></body></html>`;
 
