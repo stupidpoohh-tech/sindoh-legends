@@ -768,3 +768,38 @@ body { -webkit-font-smoothing: antialiased; }
 #ui .hud-tl, #ui .hud-info, #ui .skills { pointer-events: none; }
 #ui .minimap-wrap, #ui .minimap-wrap *, #ui .skill { pointer-events: auto; }
 #ui .skill * { pointer-events: none; }
+
+/* Finale: let each complete sentence arrive gently, with room to read. */
+#victory { overflow-x: hidden; overflow-y: auto; justify-content: flex-start; }
+#victory .victory-decor { position: fixed; inset: 0; overflow: hidden; pointer-events: none; }
+#ui #victory .victory-decor * { pointer-events: none; }
+#victory .victory-content { position: relative; z-index: 2; flex: none; width: 100%; margin: auto 0; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+#victory .rays { opacity: .1; }
+#victory img.champ { height: min(22vh, 180px); flex: none; }
+#victory .ending-message { width: min(100%, 1000px); margin: 20px 0 4px; display: grid; gap: 14px; word-break: keep-all; overflow-wrap: anywhere; text-wrap: balance; }
+#victory .ending-line { font-size: clamp(21px, 2.6vw, 30px); line-height: 1.65; font-weight: 600; color: #e6edfa; animation: endingReveal 1.7s cubic-bezier(.2,.65,.3,1) var(--reveal-delay) both; }
+#victory .ending-lead { font-size: clamp(23px, 2.9vw, 34px); font-weight: 700; color: #fff8e6; }
+#victory .ending-final { font-size: clamp(25px, 3.2vw, 38px); font-weight: 700; color: #ffe5a1; text-shadow: 0 0 24px rgba(245,197,66,.25); }
+#victory .acts { animation: endingReveal 1.2s ease 6.6s both; }
+#victory .acts:focus-within { animation: none; }
+@keyframes endingReveal {
+  from { opacity: 0; transform: translateY(12px); filter: blur(3px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+@media (max-width: 600px) {
+  #victory .ending-message { gap: 16px; margin-top: 18px; }
+  #victory .vic { font-size: clamp(48px, 14vw, 76px); }
+  #victory img.champ { height: min(18vh, 140px); }
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  #victory img.champ { display: none; }
+  #victory .ending-message { margin-top: 12px; gap: 8px; }
+  #victory .ending-line { font-size: clamp(20px, 3vw, 26px); line-height: 1.5; }
+  #victory .ending-lead { font-size: clamp(22px, 3.2vw, 28px); }
+  #victory .ending-final { font-size: clamp(24px, 3.5vw, 30px); }
+  #victory .acts { width: min(100%, 700px); flex-wrap: wrap; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #victory *, #victory .acts { animation: none !important; }
+  #victory .confetti { display: none; }
+}

@@ -946,16 +946,20 @@ function openVideo(arg: VideoEntry | VideoEntry[], onClose?: () => void) {
 function showVictory() {
   $('#hud').classList.add('hidden');
   const el = h(`<div id="victory" class="screen">
-    <div class="rays"></div>
+    <div class="victory-decor" aria-hidden="true"><div class="rays"></div></div>
+    <div class="victory-content">
     <div class="vic">VICTORY</div>
     ${artImg(championImg('victory'), 'victory', 'champ')}
     <div class="l1">${esc(runtime.ending.title)}</div>
-    <div class="l2">${esc(runtime.ending.line1)}</div>
-    <div class="l3">${esc(runtime.ending.line2)}</div>
+    <div class="ending-message">
+      <div class="ending-line ending-lead" style="--reveal-delay: 1.4s">${esc(runtime.ending.line1)}</div>
+      ${runtime.ending.line2.split('\n').filter(Boolean).map((line, index, lines) => `<div class="ending-line${index === lines.length - 1 ? ' ending-final' : ''}" style="--reveal-delay: ${3 + index * 1.8}s">${esc(line)}</div>`).join('')}
+    </div>
     <div class="acts">
       <button class="btn gold" data-a="title">타이틀로 돌아가기</button>
       <button class="btn" data-a="archive">${ICONS.archive}<span>추억의 기록관</span></button>
       <button class="btn ghost" data-a="again">다시 플레이</button>
+    </div>
     </div>
   </div>`);
   root.appendChild(el);
@@ -966,7 +970,7 @@ function showVictory() {
     c.style.background = ['#00DC84', '#00b7ff', '#2870ff', '#6f36ff', '#f5c542', '#fff'][i % 6];
     c.style.animationDuration = 3 + Math.random() * 4 + 's';
     c.style.animationDelay = Math.random() * 3 + 's';
-    el.appendChild(c);
+    el.querySelector('.victory-decor')!.appendChild(c);
   }
   el.onclick = (e) => {
     const a = (e.target as HTMLElement).closest('[data-a]')?.getAttribute('data-a');
