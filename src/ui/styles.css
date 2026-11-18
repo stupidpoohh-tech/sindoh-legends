@@ -659,8 +659,9 @@ body { -webkit-font-smoothing: antialiased; }
 .rotate-guard small { font-size: 14px; font-weight: 500; color: #b4c4d8; line-height: 1.5; }
 .rg-phone { width: 64px; height: 108px; border: 4px solid #e9c46a; border-radius: 14px; position: relative; margin-bottom: 18px; animation: rgTurn 2.4s ease-in-out infinite; }
 .rg-phone i { position: absolute; left: 50%; bottom: 6px; width: 16px; height: 4px; margin-left: -8px; border-radius: 2px; background: #e9c46a; }
-@keyframes rgTurn { 0%, 25% { transform: rotate(0); } 55%, 100% { transform: rotate(-90deg); } }
-@media (orientation: portrait) and (max-width: 900px) {
+@keyframes rgTurn { 0%, 25% { transform: rotate(-90deg); } 55%, 100% { transform: rotate(0); } }
+/* 휴대폰을 가로로 들었을 때 세로 안내 (세로 화면 전용) */
+@media (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
   .rotate-guard { display: flex; }
 }
 /* 하단 안내는 스킬 묶음 왼쪽의 남은 공간 가운데에 */
@@ -719,45 +720,51 @@ body { -webkit-font-smoothing: antialiased; }
 .vcode .err { min-height: 18px; color: #ffb0bb; font-size: 13px; }
 .vcode .btn { min-width: 160px; }
 
-/* ═══ 아이폰 사파리 전체화면 유도 ═══
-   문서를 화면보다 길게 만들어, 사용자가 위로 밀면 사파리가 주소창을 접도록 함 (게임은 #app 고정 레이어) */
-html.ios-swipe, html.ios-swipe body { position: static; overflow: visible; height: auto; touch-action: pan-y; }
-html.ios-swipe body { min-height: calc(100vh + 240px); }
-html.ios-swipe #app { position: fixed; inset: 0; }
-.swipe-guard {
-  position: fixed; inset: 0; z-index: 90; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
-  padding: 16px; text-align: center; background: rgba(3,10,26,.82); color: #fff; touch-action: pan-y;
-  -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+/* ═══ 좌측 상단 HUD 축소 — 터치 기기·낮은 화면만 (PC 는 기존 크기 유지) ═══ */
+@media (pointer: coarse), (max-height: 520px) {
+  #hud { --mm: clamp(80px, 23vh, 140px); }
+  .hud-tl { gap: 6px; top: calc(4px + var(--safe-t)); left: calc(4px + var(--safe-l)); }
+  .minimap-wrap { border-width: 9px; border-image-width: 9px; }
+  .hud-info { width: clamp(170px, 21vw, 250px); gap: 3px; }
+  .hud-info .player-card { border-width: 10px; border-image-width: 10px; gap: 6px; padding: 0 4px 0 0; }
+  .hud-info .portrait { width: clamp(34px, 10vh, 46px); height: clamp(34px, 10vh, 46px); margin: -3px 0 -3px -3px; }
+  .hud-info .portrait .lv { font-size: 10px; padding: 0 4px; }
+  .hud-info .bars { gap: 3px; }
+  .hud-info .bars .nm { font-size: clamp(10.5px, 3vh, 12px); letter-spacing: .02em; }
+  .hud-info .bars .nm b { font-size: clamp(10px, 2.8vh, 11.5px); }
+  .hud-info .bar.hp { height: 9px; }
+  .hud-info .bar.xp { height: 4px; }
+  .hud-info .objective { font-size: clamp(11px, 3.1vh, 13px); line-height: 1.3; border-width: 8px; border-image-width: 8px; padding: 0 4px 0 22px; }
+  .hud-info .objective::before { font-size: 10.5px; margin-right: 4px; }
+  .hud-info .buff { font-size: 10.5px; padding: 1px 6px 1px 1px; }
+  .hud-info .buff img { width: 17px; height: 17px; }
+  #pauseBtn { width: 42px; height: 42px; top: calc(5px + var(--safe-t)); right: calc(5px + var(--safe-r)); }
+  .hud-info { width: clamp(196px, 24vw, 260px); }
+  .hud-info .bars .nm { gap: 4px; }
 }
-.swipe-guard b { font-size: 19px; font-weight: 700; }
-.swipe-guard small { font-size: 13px; font-weight: 500; line-height: 1.55; color: #c6d3e4; }
-.swipe-guard em { font-style: normal; color: #ffe28a; font-weight: 600; }
-.swipe-guard .btn { margin-top: 6px; min-height: 44px; font-size: 14px; }
-.sg-hand { width: 34px; height: 54px; border: 3px solid #e9c46a; border-radius: 17px; position: relative; margin-bottom: 4px; }
-.sg-hand i { position: absolute; left: 50%; top: 30px; width: 8px; height: 8px; margin-left: -4px; border-radius: 50%; background: #e9c46a; animation: sgUp 1.4s ease-in-out infinite; }
-@keyframes sgUp { 0% { top: 34px; opacity: 0; } 30% { opacity: 1; } 100% { top: 6px; opacity: 0; } }
 
-/* ═══ 좌측 상단 HUD 축소 (가로 화면 기준) ═══ */
-#hud { --mm: clamp(80px, 23vh, 140px); }
-.hud-tl { gap: 6px; top: calc(4px + var(--safe-t)); left: calc(4px + var(--safe-l)); }
-.minimap-wrap { border-width: 9px; border-image-width: 9px; }
-.hud-info { width: clamp(170px, 21vw, 250px); gap: 3px; }
-.hud-info .player-card { border-width: 10px; border-image-width: 10px; gap: 6px; padding: 0 4px 0 0; }
-.hud-info .portrait { width: clamp(34px, 10vh, 46px); height: clamp(34px, 10vh, 46px); margin: -3px 0 -3px -3px; }
-.hud-info .portrait .lv { font-size: 10px; padding: 0 4px; }
-.hud-info .bars { gap: 3px; }
-.hud-info .bars .nm { font-size: clamp(10.5px, 3vh, 12px); letter-spacing: .02em; }
-.hud-info .bars .nm b { font-size: clamp(10px, 2.8vh, 11.5px); }
-.hud-info .bar.hp { height: 9px; }
-.hud-info .bar.xp { height: 4px; }
-.hud-info .objective { font-size: clamp(11px, 3.1vh, 13px); line-height: 1.3; border-width: 8px; border-image-width: 8px; padding: 0 4px 0 22px; }
-.hud-info .objective::before { font-size: 10.5px; margin-right: 4px; }
-.hud-info .buff { font-size: 10.5px; padding: 1px 6px 1px 1px; }
-.hud-info .buff img { width: 17px; height: 17px; }
-#pauseBtn { width: 42px; height: 42px; top: calc(5px + var(--safe-t)); right: calc(5px + var(--safe-r)); }
-@media (min-height: 600px) {
-  #hud { --mm: clamp(120px, 20vh, 170px); }
-  .hud-info { width: clamp(220px, 20vw, 300px); }
+/* ═══ v5: 모바일 세로 화면 HUD ═══
+   좌측 상단: 미니맵 + 정보 / 우측 상단: 일시정지 / 우측 하단: 스킬 / 안내는 스킬 위, 튜토리얼은 상단 정보 아래 */
+@media (orientation: portrait) {
+  #hud { --mm: clamp(84px, 24vw, 112px); --rs: clamp(76px, 21vw, 92px); --ss: clamp(56px, 15.5vw, 68px); }
+  .hud-info { width: min(calc(100vw - var(--mm) - 96px - var(--safe-l) - var(--safe-r)), 280px); }
+  .hud-info .objective { font-size: 12.5px; }
+  .boss-bar { top: calc(var(--mm) + 26px + var(--safe-t)); left: 50%; right: auto; transform: translateX(-50%); width: min(92vw, 460px); }
+  .toast { top: auto; bottom: calc(var(--rs) + 50px + var(--safe-b)); left: 50%; transform: translateX(-50%); max-width: 92vw; }
+  .tutorial { top: calc(var(--mm) + 24px + var(--safe-t)); bottom: auto; left: 50%; transform: translateX(-50%); width: min(92vw, 400px); }
+  .banner { top: 30%; }
+  .panel { width: min(100%, 440px); }
 }
-.hud-info { width: clamp(196px, 24vw, 260px); }
-.hud-info .bars .nm { gap: 4px; }
+/* 전체보기: 순번 표시와 이전·다음 */
+.vbar .vcount { flex: none; font-size: 13px; font-weight: 600; color: #f6dc9a; padding: 2px 10px; border-radius: 999px; background: rgba(255,255,255,.08); font-variant-numeric: tabular-nums; }
+.vfoot .btn:disabled { opacity: .35; }
+.vfoot .btn[data-a=prev], .vfoot .btn[data-a=next] { flex: 0 0 auto; min-width: 76px; }
+@media (orientation: portrait) and (max-width: 400px) {
+  /* 좁은 세로 화면: 이름과 HP 숫자가 잘리지 않도록 줄바꿈 */
+  .hud-info .bars .nm { flex-wrap: wrap; row-gap: 0; line-height: 1.2; }
+  .hud-info .bars .nm b { font-size: 10.5px; }
+}
+/* HUD 묶음 영역은 맵 터치를 통과시키고, 실제 버튼·미니맵만 입력을 받음 (#ui * 규칙보다 우선) */
+#ui .hud-tl, #ui .hud-info, #ui .skills { pointer-events: none; }
+#ui .minimap-wrap, #ui .minimap-wrap *, #ui .skill { pointer-events: auto; }
+#ui .skill * { pointer-events: none; }

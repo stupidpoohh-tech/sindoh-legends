@@ -65,8 +65,7 @@ export function initUi(h0: UiHooks) {
     'touchmove',
     (e) => {
       const el = e.target as HTMLElement;
-      // 아이폰 '위로 밀기' 안내 중에는 문서 스크롤을 허용해 주소창이 접히게 함
-      if (!el.closest('.panel') && !el.closest('video') && !el.closest('#swipeGuard')) e.preventDefault();
+      if (!el.closest('.panel') && !el.closest('video')) e.preventDefault();
     },
     { passive: false },
   );
@@ -77,7 +76,6 @@ export function initUi(h0: UiHooks) {
   buildTitle();
   buildHud();
   buildRotateGuard();
-  buildIosFullscreen();
   bus.on('loading', (v: number) => {
     const bar = $('#title .loading-bar i');
     if (bar) bar.style.width = Math.round(v * 100) + '%';
@@ -147,18 +145,18 @@ function onState(next: GameState) {
   if (next === GameState.BOSS_BATTLE || next === GameState.NEXUS_BATTLE || next === GameState.PLAYING) $('#tutorial')?.classList.add('hidden');
 }
 
-/* ═════════════ 가로 화면 전용 ═════════════ */
-/** 세로로 들고 있는 휴대폰에서는 안내 화면을 덮고, 게임 중이면 자동 일시정지 */
-const PORTRAIT_MQ = '(orientation: portrait) and (max-width: 900px)';
+/* ═════════════ 모바일 세로 화면 전용 ═════════════ */
+/** 휴대폰을 가로로 들면 안내 화면을 덮고, 게임 중이면 자동 일시정지 (PC 는 해당 없음) */
+const LANDSCAPE_PHONE_MQ = '(orientation: landscape) and (max-height: 500px) and (pointer: coarse)';
 function buildRotateGuard() {
   root.appendChild(
     h(`<div id="rotateGuard" class="rotate-guard">
       <div class="rg-phone"><i></i></div>
-      <b>휴대폰을 가로로 돌려 주세요</b>
-      <small>SINDOH LEGENDS는 가로 화면에서 플레이합니다.</small>
+      <b>휴대폰을 세로로 돌려 주세요</b>
+      <small>SINDOH LEGENDS는 세로 화면에서 플레이합니다.</small>
     </div>`),
   );
-  const mq = window.matchMedia(PORTRAIT_MQ);
+  const mq = window.matchMedia(LANDSCAPE_PHONE_MQ);
   const onChange = () => {
     if (mq.matches && fsm.isRunning) openPause();
   };
@@ -166,62 +164,12 @@ function buildRotateGuard() {
   window.addEventListener('orientationchange', () => setTimeout(onChange, 300));
 }
 
-/**
- * 아이폰 사파리: 웹페이지가 전체화면 API 를 쓸 수 없으므로
- * ① 가로 화면에서 주소창이 보이면 '위로 밀어 올리기' 안내 → 문서를 스크롤하면 사파리가 주소창을 접음
- * ② 홈 화면에 추가하면 주소창 없이 앱처럼 실행 (안내 문구 제공)
- */
-const IS_IOS = /iP(hone|od|ad)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-const IS_STANDALONE = (navigator as any).standalone === true || window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(display-mode: fullscreen)').matches;
-function buildIosFullscreen() {
-  if (!IS_IOS || IS_STANDALONE) return;
-  document.documentElement.classList.add('ios-swipe');
-  const el = h(`<div id="swipeGuard" class="swipe-guard hidden">
-      <div class="sg-hand"><i></i></div>
-      <b>화면을 위로 밀어 올려 주세요</b>
-      <small>주소창이 사라지고 전체 화면으로 플레이할 수 있습니다.<br>
-      공유 버튼 → <em>홈 화면에 추가</em>로 설치하면 처음부터 주소창 없이 실행됩니다.</small>
-      <button class="btn ghost" type="button" data-a="skip">이대로 계속하기</button>
-    </div>`);
-  root.appendChild(el);
-  // '이대로 계속하기'는 이번 접속(탭) 동안 유지
-  let skipped = false;
-  try {
-    skipped = sessionStorage.getItem('sl_swipe_skip') === '1';
-  } catch {
-    /* 저장소 차단 */
-  }
-  ($('[data-a=skip]', el) as HTMLElement).onclick = (e) => {
-    e.stopPropagation();
-    skipped = true;
-    try {
-      sessionStorage.setItem('sl_swipe_skip', '1');
-    } catch {
-      /* 저장소 차단 */
-    }
-    el.classList.add('hidden');
-  };
-  let maxLandscapeH = 0;
-  const check = () => {
-    const landscape = window.innerWidth > window.innerHeight;
-    if (landscape) maxLandscapeH = Math.max(maxLandscapeH, window.innerHeight);
-    // 가로일 때 전체 높이 = 화면의 짧은 변 (또는 지금까지 관찰한 가장 큰 가로 높이)
-    const full = Math.max(Math.min(screen.width, screen.height), maxLandscapeH);
-    const chromeVisible = landscape && window.innerHeight < full - 24;
-    el.classList.toggle('hidden', skipped || !chromeVisible);
-  };
-  window.addEventListener('resize', check);
-  window.addEventListener('orientationchange', () => setTimeout(check, 400));
-  window.visualViewport?.addEventListener('resize', check);
-  check();
-}
-
-/** 시작 버튼(사용자 입력) 안에서 호출: 안드로이드 크롬은 전체화면 + 가로 고정, 미지원 기기는 그대로 진행 */
-function requestLandscape() {
+/** 시작 버튼(사용자 입력) 안에서 호출: 안드로이드 크롬은 전체화면 + 세로 고정, 미지원 기기는 그대로 진행 */
+function requestPortrait() {
   const coarse = window.matchMedia('(pointer: coarse)').matches;
   if (!coarse) return;
   const el = document.documentElement as any;
-  const lock = () => (screen.orientation as any)?.lock?.('landscape').catch(() => {});
+  const lock = () => (screen.orientation as any)?.lock?.('portrait').catch(() => {});
   try {
     const req = el.requestFullscreen || el.webkitRequestFullscreen;
     if (req && !document.fullscreenElement) {
@@ -298,13 +246,13 @@ function buildTitle() {
     }),
   );
   $('#startBtn').onclick = () => {
-    requestLandscape();
+    requestPortrait();
     audio.unlock();
     audio.play('click');
     playIntro(false);
   };
   $('#continueBtn').onclick = () => {
-    requestLandscape();
+    requestPortrait();
     audio.unlock();
     audio.play('click');
     playIntro(true);
@@ -803,7 +751,7 @@ function openArchive() {
       const hint = v.unlockBy === 'mem_victory' ? '최종 승리 후 공개' : v.unlockBy === 'mem_turret' ? '적 포탑을 파괴하면 해금' : '협곡 곳곳의 기억을 찾아보세요';
       return `<button class="vcard ${open ? '' : 'locked'}" data-id="${v.id}" ${open ? '' : 'aria-disabled="true"'}>
         <div class="th">${open && v.poster ? `<img src="${esc(v.poster)}" alt="" onerror="this.remove()">` : ''}${open ? ICONS.play : ICONS.lock}</div>
-        <div class="meta"><b>${open ? esc(v.title) : '잠긴 기억'}${open && v.duration ? `<span class="badge">${esc(v.duration)}</span>` : ''}</b>
+        <div class="meta"><b>${open ? esc(v.title) : '잠긴 기억'}</b>
         <small>${open ? esc(v.description) : hint}</small></div></button>`;
     })
     .join('');
@@ -813,7 +761,9 @@ function openArchive() {
     `<img class="archive-hero" src="${G('diorama')}" alt="" onerror="this.remove()">
      <h2>추억의 기록관</h2><p class="sub">발견한 기억 ${count} / ${runtime.videos.length}</p>
      <div class="archive-list">${cards || '<p class="sub">등록된 기록이 없습니다.</p>'}</div>
-     <div class="stack" style="margin-top:14px"><button class="btn" data-a="close">닫기</button></div>`,
+     <div class="stack" style="margin-top:14px">
+       ${__EDITION__ === 'private' && count > 0 ? `<button class="btn gold" data-a="all">${ICONS.play}<span>전체보기 (${count}편 이어보기)</span></button>` : ''}
+       <button class="btn" data-a="close">닫기</button></div>`,
   );
   el.onclick = (e) => {
     const t = e.target as HTMLElement;
@@ -821,6 +771,12 @@ function openArchive() {
       audio.play('click');
       el.remove();
       fsm.pop();
+      return;
+    }
+    if (t.closest('[data-a="all"]')) {
+      audio.play('click');
+      // 해금한 기록을 기록관 순서대로 이어서 재생
+      openVideo(runtime.videos.filter((x) => unlocked.has(x.unlockBy)));
       return;
     }
     const card = t.closest('.vcard') as HTMLElement | null;
@@ -831,15 +787,22 @@ function openArchive() {
 }
 
 /* ═════════════ 영상 플레이어 ═════════════ */
-function openVideo(v: VideoEntry, onClose?: () => void) {
+/** 영상 1개 또는 목록(전체보기)을 순서대로 재생. 한 편이 끝나면 다음 편으로 자동 이동 */
+function openVideo(arg: VideoEntry | VideoEntry[], onClose?: () => void) {
+  const queue = Array.isArray(arg) ? arg : [arg];
+  if (!queue.length) return;
+  let idx = 0;
+  let v = queue[0];
+  let gen = 0; // 이전 영상의 늦은 응답 무시용
+  const multi = queue.length > 1;
   fsm.push(GameState.VIDEO);
   audio.music('none');
   const el = h(`<div id="video" class="screen">
-    <div class="vbar"><div class="vt">${esc(v.title)}</div>
+    <div class="vbar"><div class="vt"></div>${multi ? '<span class="vcount"></span>' : ''}
       <button class="icon-btn" data-a="fs" aria-label="전체화면">${ICONS.fullscreen}</button>
       <button class="icon-btn" data-a="close" aria-label="닫기">${ICONS.close}</button></div>
     <div class="vstage"></div>
-    <div class="vfoot"><button class="btn primary" data-a="close">게임으로 돌아가기</button></div>
+    <div class="vfoot">${multi ? '<button class="btn" data-a="prev">이전</button>' : ''}<button class="btn primary" data-a="close">게임으로 돌아가기</button>${multi ? '<button class="btn" data-a="next">다음</button>' : ''}</div>
   </div>`);
   root.appendChild(el);
   const stage = $('.vstage', el);
@@ -862,6 +825,10 @@ function openVideo(v: VideoEntry, onClose?: () => void) {
     video.preload = 'metadata';
     if (v.poster) video.poster = v.poster;
     video.addEventListener('error', onFail, { once: true });
+    // 전체보기: 끝나면 다음 영상
+    video.addEventListener('ended', () => {
+      if (idx < queue.length - 1) go(idx + 1);
+    });
     video.src = src;
     stage.appendChild(video);
     video.play().catch(() => {});
@@ -885,47 +852,71 @@ function openVideo(v: VideoEntry, onClose?: () => void) {
       stage.querySelector('.vplaceholder')!.appendChild(b);
     }
   };
-  if (__EDITION__ === 'private') {
-    import('./privateVideo').then((pv) => {
-      const askCode = (msg = '') => {
-        unmount();
-        fsBtn.style.visibility = 'hidden';
-        stage.innerHTML = `<form class="vplaceholder vcode"><div class="big">${ICONS.lock}</div><h3>입장 코드를 입력해 주세요</h3>
-          <p>선물 영상은 입장 코드가 있어야 볼 수 있습니다.</p>
-          <input type="password" autocomplete="off" inputmode="text" maxlength="64" aria-label="입장 코드" placeholder="입장 코드">
-          <p class="err">${esc(msg)}</p><button class="btn primary" type="submit">확인</button></form>`;
-        const form = stage.querySelector('form')!;
-        const input = form.querySelector('input')!;
-        form.onsubmit = async (e) => {
-          e.preventDefault();
-          if (await pv.login(input.value)) play();
-          else askCode('입장 코드가 맞지 않습니다.');
+  const go = (i: number) => {
+    idx = Math.max(0, Math.min(queue.length - 1, i));
+    v = queue[idx];
+    load();
+  };
+  const load = () => {
+    const my = ++gen;
+    unmount();
+    $('.vt', el).textContent = v.title;
+    if (multi) {
+      $('.vcount', el).textContent = `${idx + 1} / ${queue.length}`;
+      ($('[data-a=prev]', el) as HTMLButtonElement).disabled = idx === 0;
+      ($('[data-a=next]', el) as HTMLButtonElement).disabled = idx === queue.length - 1;
+    }
+    if (__EDITION__ === 'private') {
+      import('./privateVideo').then((pv) => {
+        if (my !== gen) return;
+        const askCode = (msg = '') => {
+          unmount();
+          fsBtn.style.visibility = 'hidden';
+          stage.innerHTML = `<form class="vplaceholder vcode"><div class="big">${ICONS.lock}</div><h3>입장 코드를 입력해 주세요</h3>
+            <p>선물 영상은 입장 코드가 있어야 볼 수 있습니다.</p>
+            <input type="password" autocomplete="off" inputmode="text" maxlength="64" aria-label="입장 코드" placeholder="입장 코드">
+            <p class="err">${esc(msg)}</p><button class="btn primary" type="submit">확인</button></form>`;
+          const form = stage.querySelector('form')!;
+          const input = form.querySelector('input')!;
+          form.onsubmit = async (e) => {
+            e.preventDefault();
+            if (await pv.login(input.value)) play();
+            else askCode('입장 코드가 맞지 않습니다.');
+          };
+          setTimeout(() => input.focus(), 50);
         };
-        setTimeout(() => input.focus(), 50);
-      };
-      const play = () => {
-        stage.innerHTML = '<div class="vplaceholder"><p>영상을 불러오는 중…</p></div>';
-        mount(pv.videoUrl(v.id), async () => {
-          const why = await pv.diagnose(v.id);
-          if (why === 'auth') askCode('인증이 만료되었습니다. 다시 입력해 주세요.');
-          else if (why === 'missing') showError('영상이 아직 준비되지 않았습니다. (곧 업로드될 예정입니다)');
-          else showError('영상을 불러오지 못했습니다. 네트워크 연결을 확인한 뒤 다시 시도해 주세요.', play);
+        const play = () => {
+          stage.innerHTML = '<div class="vplaceholder"><p>영상을 불러오는 중…</p></div>';
+          mount(pv.videoUrl(v.id), async () => {
+            const why = await pv.diagnose(v.id);
+            if (my !== gen) return;
+            if (why === 'auth') askCode('인증이 만료되었습니다. 다시 입력해 주세요.');
+            else if (why === 'missing') {
+              showError('영상이 아직 준비되지 않았습니다. (곧 업로드될 예정입니다)');
+              // 전체보기 중이면 잠시 후 다음 영상으로
+              if (multi && idx < queue.length - 1) setTimeout(() => my === gen && go(idx + 1), 2500);
+            }
+            else showError('영상을 불러오지 못했습니다. 네트워크 연결을 확인한 뒤 다시 시도해 주세요.', play);
+          });
+        };
+        // 최초 확인 결과가 아니라 현재 인증 상태 기준 (코드 입력 후 다른 영상도 바로 재생)
+        pv.initPrivateAuth().then(() => {
+          if (my === gen) pv.isAuthed() ? play() : askCode();
         });
-      };
-      // 최초 확인 결과가 아니라 현재 인증 상태 기준 (코드 입력 후 다른 영상도 바로 재생)
-      pv.initPrivateAuth().then(() => (pv.isAuthed() ? play() : askCode()));
-    });
-  } else if (v.src) {
-    const tryPlay = () => mount(v.src!, () => showError('영상을 불러오지 못했습니다.', tryPlay));
-    tryPlay();
-  } else {
-    // PUBLIC: 비공개 기념 콘텐츠 안내
-    fsBtn.style.visibility = 'hidden';
-    stage.innerHTML = `<div class="vplaceholder private-note"><div class="big">${ICONS.lock}</div>
-      <h3>비공개 기념 콘텐츠</h3>
-      <p>이 자리에는 퇴직 선물로 함께 전달된 기념 영상이 들어갑니다.<br>
-      실제 인물이 등장하는 영상과 개인적인 메시지는 선물 버전에서만 열람할 수 있습니다.</p></div>`;
-  }
+      });
+    } else if (v.src) {
+      const tryPlay = () => mount(v.src!, () => showError('영상을 불러오지 못했습니다.', tryPlay));
+      tryPlay();
+    } else {
+      // PUBLIC: 비공개 기념 콘텐츠 안내
+      fsBtn.style.visibility = 'hidden';
+      stage.innerHTML = `<div class="vplaceholder private-note"><div class="big">${ICONS.lock}</div>
+        <h3>비공개 기념 콘텐츠</h3>
+        <p>이 자리에는 퇴직 선물로 함께 전달된 기념 영상이 들어갑니다.<br>
+        실제 인물이 등장하는 영상과 개인적인 메시지는 선물 버전에서만 열람할 수 있습니다.</p></div>`;
+    }
+  };
+  load();
   const close = () => {
     unmount();
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
@@ -941,6 +932,8 @@ function openVideo(v: VideoEntry, onClose?: () => void) {
   el.onclick = (e) => {
     const a = (e.target as HTMLElement).closest('[data-a]')?.getAttribute('data-a');
     if (a === 'close') close();
+    else if (a === 'prev') go(idx - 1);
+    else if (a === 'next') go(idx + 1);
     else if (a === 'fs' && video) {
       const vv = video as any;
       if (vv.webkitEnterFullscreen && !document.fullscreenEnabled) vv.webkitEnterFullscreen();

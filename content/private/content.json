@@ -6,35 +6,30 @@
       "id": "workshop_01",
       "title": "워크숍의 기억 · 1",
       "description": "함께 떠났던 첫 번째 워크숍의 순간들",
-      "duration": "약 3분",
       "unlockBy": "mem_base"
     },
     {
       "id": "workshop_02",
       "title": "워크숍의 기억 · 2",
       "description": "두 번째 워크숍, 웃음이 끊이지 않던 날",
-      "duration": "약 3분",
       "unlockBy": "mem_jungle"
     },
     {
       "id": "workshop_03",
       "title": "워크숍의 기억 · 3",
       "description": "세 번째 워크숍의 이야기",
-      "duration": "약 3분",
       "unlockBy": "mem_river"
     },
     {
       "id": "esports",
       "title": "사내 e스포츠 대회",
       "description": "부장님이 개최하신 사내 e스포츠 대회 하이라이트",
-      "duration": "약 1분",
       "unlockBy": "mem_turret"
     },
     {
       "id": "thankyou",
       "title": "부장님께 드리는 감사 메시지",
       "description": "함께한 동료들이 전하는 마음",
-      "duration": "",
       "unlockBy": "mem_victory"
     }
   ],

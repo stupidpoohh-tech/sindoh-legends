@@ -75,10 +75,12 @@ def feather(im, px=14):
 def save(key, im, scale=None, height=None, q=86, center=False):
     if key.startswith('fx_') or key.endswith('_ret'):
         # 투명 여백을 먼저 두르고 가장자리만 부드럽게 → 이펙트 본체는 잘리지 않음
+        # 원래 경계에서 알파를 0까지 서서히 낮춘 뒤(잘린 글로우의 직선 자국 제거) 투명 여백을 두름
+        im = feather(im, 34 if key.startswith('fx_w_') else 14)
         pad = 16
         padded = Image.new('RGBA', (im.width + pad * 2, im.height + pad * 2))
         padded.paste(im, (pad, pad))
-        im = feather(padded, 12)
+        im = padded
     if center:
         im = centered(im)
     if height:
@@ -163,14 +165,15 @@ save('deco_banner', largest(load('download3.png')), height=260)
 fx = load('블루 골드 스킬 이펙트 시트.png')
 cw, chh = 1774 / 5, 887 / 3
 # W 보호막 프레임 실제 위치 (돔이 격자 칸 경계를 넘음)
-W_BOXES = {'w_0': (60, 430, 265, 125), 'w_1': (318, 375, 302, 185), 'w_2': (630, 320, 330, 250), 'w_3': (965, 300, 390, 238), 'w_icon': (1352, 345, 128, 190)}
+# 넉넉한 영역에서 이펙트 덩어리만 추출(글로우가 자연스럽게 0까지 사라지도록) — 사각형 경계 잘림 방지
+W_BOXES = {'w_0': (30, 390, 320, 210), 'w_1': (295, 340, 345, 250), 'w_2': (605, 285, 375, 330), 'w_3': (945, 265, 425, 292), 'w_icon': (1338, 318, 170, 245)}
 names = [['q_0', 'q_1', 'q_2', 'q_3', 'q_hit'], ['w_0', 'w_1', 'w_2', 'w_3', 'w_icon'], ['r_0', 'r_1', 'r_2', 'r_3', 'r_trail']]
 for r, row in enumerate(names):
     for c, n in enumerate(row):
         cell = fx.crop((int(c * cw), int(r * chh), int((c + 1) * cw), int((r + 1) * chh)))
         im = largest(cell, dil=10)
         if n in W_BOXES:  # W 보호막은 격자 칸보다 넓어 실제 위치로 잘라냄
-            im = largest(crop(fx, *W_BOXES[n]), dil=10)
+            im = largest(crop(fx, *W_BOXES[n]), dil=3)
         save('fx_' + n, im, scale=0.75)
 save('fx_purple_blast', largest(load('보랏빛 마법 충격파 폭발.png'), keep_all=True), height=300)
 save('fx_red_strike', largest(load('붉은 번개 충격파 이펙트.png'), keep_all=True), height=320)
