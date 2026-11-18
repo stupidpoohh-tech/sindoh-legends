@@ -11,6 +11,7 @@ export interface Env {
   VIDEOS?: any; // R2Bucket
   VIDEO_KEYS?: string;
   VIDEO_ESPORTS_KEY?: string;
+  VIDEO_WORKSHOP_02_KEY?: string;
 }
 
 export const COOKIE = 'sl_auth';
