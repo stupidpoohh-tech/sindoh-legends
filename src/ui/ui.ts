@@ -125,6 +125,13 @@ export function initUi(h0: UiHooks) {
     if (document.hidden && fsm.isRunning) openPause();
   });
   onState(GameState.TITLE);
+  // 타이틀 배경음악: 브라우저 자동재생 제한으로 첫 터치·클릭 때 시작
+  const titleMusic = () => {
+    audio.unlock();
+    if (fsm.baseState === GameState.TITLE && fsm.state !== GameState.VIDEO) audio.music('title');
+  };
+  document.addEventListener('pointerdown', titleMusic, { capture: true });
+  document.addEventListener('keydown', titleMusic, { capture: true, once: true });
 }
 
 /* ═════════════ 상태 → 화면 ═════════════ */
@@ -205,7 +212,7 @@ function buildTitle() {
       <div class="tl-bg"></div>
       <div class="tl-art">
         <img src="${G('title_full')}" alt="SINDOH LEGENDS 시작 화면" draggable="false">
-        <button class="hot" data-act="continue" id="continueBtn2" style="left:31%;top:42.5%;width:40%;height:11%">이어하기</button>
+        <button class="hot hidden" data-act="continue" id="continueBtn2" style="left:31%;top:42.5%;width:40%;height:11%">이어하기</button>
         <button class="hot invisible" data-act="start" style="left:31%;top:56%;width:40%;height:14%" aria-label="협곡 입장"></button>
         <button class="hot invisible" data-act="archive" style="left:23%;top:78.5%;width:30.5%;height:13.5%" aria-label="추억의 기록관"></button>
         <button class="hot invisible" data-act="sound" style="left:55.4%;top:78.5%;width:8.6%;height:13.5%" aria-label="소리"><i class="mute"></i></button>
@@ -264,11 +271,10 @@ function playIntro(resume: boolean) {
   root.appendChild(el);
   later(() => {
     $('#im1').classList.add('on');
-    if (!audio.voice('voice_welcome')) audio.play('welcome');
+    if (!audio.voice('vo_welcome')) audio.play('welcome');
   }, 300);
   later(() => {
     hooks.startGame(resume);
-    audio.music('field');
   }, 1500);
   later(() => {
     $('#im2').classList.add('on');
@@ -277,6 +283,8 @@ function playIntro(resume: boolean) {
   later(() => el.classList.add('fade'), 3600);
   later(() => {
     el.remove();
+    audio.music('field');
+    later(() => audio.announce('vo_minions', 1), 1200);
     if (!save.data.tutorialDone) startTutorial();
     else {
       fsm.set(GameState.PLAYING);
@@ -814,7 +822,8 @@ function openVideo(v: VideoEntry, onClose?: () => void) {
     const base = fsm.baseState;
     if (base === GameState.BOSS_BATTLE) audio.music('boss');
     else if (base === GameState.VICTORY) audio.music('victory');
-    else if (base !== GameState.TITLE) audio.music('field');
+    else if (base === GameState.TITLE) audio.music('title');
+    else audio.music('field');
     onClose?.();
   };
   el.onclick = (e) => {

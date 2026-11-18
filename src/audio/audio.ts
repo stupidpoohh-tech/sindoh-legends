@@ -19,9 +19,17 @@ const FILE_KEY: Partial<Record<Sfx, string>> = {
   turretDestroy: 'sfx_turret_destroy',
   bossAppear: 'sfx_boss_appear',
   victory: 'sfx_victory',
-  welcome: 'voice_welcome',
-  summon: 'voice_summon',
 };
+
+export type MusicMode = 'none' | 'title' | 'field' | 'boss' | 'victory';
+/** 모드별 배경음악 키 (assets.json audio 항목). 앞의 키가 비어 있으면 다음 키 사용 */
+const MUSIC_KEYS: Record<Exclude<MusicMode, 'none'>, string[]> = {
+  title: ['bgm_title'],
+  field: ['bgm'],
+  boss: ['bgm_boss', 'bgm'],
+  victory: ['bgm_victory', 'bgm_title'],
+};
+const BGM_VOL = 0.55;
 
 class AudioEngine {
   ctx: AudioContext | null = null;
@@ -31,10 +39,15 @@ class AudioEngine {
   private noiseBuf: AudioBuffer | null = null;
   private files = new Map<string, AudioBuffer | null>();
   private musicTimer: number | null = null;
-  private musicMode: 'none' | 'field' | 'boss' | 'victory' = 'none';
+  private musicMode: MusicMode = 'none';
   private musicStep = 0;
   private nextNoteTime = 0;
   private bgmEl: HTMLAudioElement | null = null;
+  /** 배경음악 요소 풀 (url → 요소). iOS 에서는 사용자 입력 중 한 번 재생된 요소만 이후 자동 재생 가능 */
+  private bgmPool = new Map<string, HTMLAudioElement>();
+  private fadeTimer: number | null = null;
+  private voiceUntil = 0;
+  private voicePri = 0;
   private lastPlay = new Map<string, number>();
 
   get bgmOn() {
@@ -66,6 +79,8 @@ class AudioEngine {
         for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
         this.preloadFiles();
       }
+      this.primeBgm();
+      this.resumeMusic();
       if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
       // iOS 무음 버퍼 재생으로 오디오 잠금 해제
       const b = this.ctx.createBuffer(1, 1, 22050);
@@ -83,7 +98,7 @@ class AudioEngine {
     const audio = runtime.assets.audio || {};
     for (const key of Object.keys(audio)) {
       const url = audio[key];
-      if (!url || key.startsWith('bgm')) continue;
+      if (!url || key.startsWith('bgm') || key.startsWith('_')) continue;
       fetch(url)
         .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject()))
         .then((buf) => this.ctx!.decodeAudioData(buf))
@@ -92,10 +107,50 @@ class AudioEngine {
     }
   }
 
+  private bgmUrl(mode: MusicMode) {
+    if (mode === 'none') return '';
+    for (const k of MUSIC_KEYS[mode]) {
+      const u = runtime.assets.audio?.[k];
+      if (u) return u;
+    }
+    return '';
+  }
+
+  private bgmElement(url: string) {
+    let el = this.bgmPool.get(url);
+    if (!el) {
+      el = new Audio();
+      el.preload = 'none';
+      el.loop = true;
+      el.src = url;
+      el.setAttribute('playsinline', '');
+      this.bgmPool.set(url, el);
+    }
+    return el;
+  }
+
+  /** 사용자 입력 안에서 모든 배경음악 요소를 무음으로 한 번 재생 → iOS 자동재생 제한 해제 */
+  private primed = false;
+  private primeBgm() {
+    if (this.primed) return;
+    this.primed = true;
+    const urls = new Set((['title', 'field', 'boss', 'victory'] as MusicMode[]).map((m) => this.bgmUrl(m)).filter(Boolean));
+    for (const url of urls) {
+      const el = this.bgmElement(url);
+      if (el === this.bgmEl) continue;
+      el.muted = true;
+      const r = el.play();
+      if (r && r.then) r.then(() => { if (el !== this.bgmEl) el.pause(); el.muted = !this.bgmOn; }).catch(() => {});
+    }
+  }
+
   setBgm(on: boolean) {
     save.update((d) => (d.sound.bgm = on));
     if (this.musicBus) this.musicBus.gain.value = on ? 0.32 : 0;
-    if (this.bgmEl) this.bgmEl.muted = !on;
+    if (this.bgmEl) {
+      this.bgmEl.muted = !on;
+      if (on && this.bgmEl.paused) this.bgmEl.play().catch(() => {});
+    }
   }
   setSfx(on: boolean) {
     save.update((d) => (d.sound.sfx = on));
@@ -116,9 +171,30 @@ class AudioEngine {
   }
 
   /** 음성 파일이 등록되어 있으면 재생 (없으면 false → 텍스트 안내만) */
-  voice(key: 'voice_welcome' | 'voice_summon' | 'voice_victory') {
+  voice(key: string) {
+    return this.announce(key, 2);
+  }
+
+  /**
+   * 아나운서 대사. 대사끼리 겹치지 않도록 재생 중이면 우선순위가 높을 때만 끼어든다.
+   * priority: 1 일반(멀티킬 등) / 2 중요(포탑·억제기·사망) / 3 최우선(보스·승리)
+   */
+  announce(key: string, priority = 1) {
     if (!this.ctx || !this.sfxOn) return false;
-    return this.playFile(key, 1);
+    const buf = this.files.get(key);
+    if (!buf) return false;
+    const now = performance.now();
+    if (now < this.voiceUntil && priority <= this.voicePri) return false;
+    this.playFile(key, 1.15);
+    this.voiceUntil = now + buf.duration * 1000;
+    this.voicePri = priority;
+    // 대사 중 배경음악 줄이기 (iOS 는 음량 조절이 안 되므로 영향 없음)
+    const el = this.bgmEl;
+    if (el) {
+      el.volume = BGM_VOL * 0.45;
+      window.setTimeout(() => { if (this.bgmEl === el && performance.now() >= this.voiceUntil - 50) el.volume = BGM_VOL; }, buf.duration * 1000 + 80);
+    }
+    return true;
   }
 
   play(name: Sfx) {
@@ -241,27 +317,31 @@ class AudioEngine {
   }
 
   /* ───────── 배경음악 ───────── */
-  music(mode: 'none' | 'field' | 'boss' | 'victory') {
+  music(mode: MusicMode) {
     if (mode === this.musicMode) return;
     this.musicMode = mode;
     if (this.musicTimer) {
       clearInterval(this.musicTimer);
       this.musicTimer = null;
     }
-    if (this.bgmEl) {
-      this.bgmEl.pause();
+    const url = this.bgmUrl(mode);
+    const prev = this.bgmEl;
+    // 같은 곡이면 끊지 않고 이어서 재생 (예: 필드 → 보스전에서 보스 곡이 없을 때)
+    if (prev && url && prev === this.bgmPool.get(url)) return;
+    if (prev) {
       this.bgmEl = null;
+      this.fadeOut(prev);
     }
-    if (mode === 'none' || !this.ctx) return;
-
-    const fileKey = mode === 'boss' ? 'bgm_boss' : 'bgm';
-    const url = runtime.assets.audio?.[fileKey];
-    if (url && mode !== 'victory') {
-      const el = new Audio(url);
-      el.loop = true;
-      el.volume = 0.5;
+    if (mode === 'none') return;
+    if (url) {
+      const el = this.bgmElement(url);
       el.muted = !this.bgmOn;
-      el.play().catch(() => {});
+      el.volume = BGM_VOL;
+      try {
+        el.currentTime = 0;
+      } catch {
+        /* 메타데이터 로딩 전 */
+      }
       el.onerror = () => {
         if (this.bgmEl === el) {
           this.bgmEl = null;
@@ -269,9 +349,32 @@ class AudioEngine {
         }
       };
       this.bgmEl = el;
+      el.play().catch(() => {
+        /* 자동재생 차단: 다음 사용자 입력(unlock)에서 다시 시도 */
+      });
       return;
     }
-    this.startSynthMusic();
+    if (this.ctx) this.startSynthMusic();
+  }
+
+  /** 사용자 입력 후 재생이 막혀 있던 배경음악 재시도 */
+  resumeMusic() {
+    const el = this.bgmEl;
+    if (el && el.paused && this.bgmOn) el.play().catch(() => {});
+  }
+
+  private fadeOut(el: HTMLAudioElement) {
+    const start = el.volume;
+    let k = 0;
+    const id = window.setInterval(() => {
+      k++;
+      el.volume = Math.max(0, start * (1 - k / 8));
+      if (k >= 8) {
+        clearInterval(id);
+        el.pause();
+        el.volume = BGM_VOL;
+      }
+    }, 40);
   }
 
   private startSynthMusic() {

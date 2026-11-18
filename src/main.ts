@@ -42,6 +42,7 @@ async function main() {
   });
   game.registry.set('dpr', dpr);
   (window as any).__game = game;
+  (window as any).__audio = audio; // 디버그·테스트용
 
   let rt = 0;
   const onResize = () => {
@@ -75,7 +76,7 @@ async function main() {
     quitToTitle: () => {
       if (game.scene.isActive('Game') || game.scene.isPaused('Game')) game.scene.stop('Game');
       removeVictory();
-      audio.music('none');
+      audio.music('title');
       fsm.set(GameState.TITLE);
       bus.emit('boot:ready');
     },

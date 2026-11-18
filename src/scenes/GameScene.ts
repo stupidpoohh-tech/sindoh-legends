@@ -83,6 +83,8 @@ const KIND_VIEW: Record<Kind, ViewDef> = {
   nexus: { tex: 's_nexus', h: 200, r: 84, hpW: 130, hpY: -212, shadowW: 220, norm: true },
   allyNexus: { tex: 's_ally_nexus', h: 190, r: 70, shadowW: 180, norm: true },
 };
+/** W 보호막 돔 표시 폭 (캐릭터 키 대비 머리까지 덮도록) */
+const SHIELD_W = { player: 200, captain: 150, minion: 104 };
 const RUIN: Partial<Record<Kind, string>> = { turret: 's_turret_ruin', inhibitor: 's_inhib_ruin', firewall: 's_turret_ruin', nexus: 's_nexus_ruin' };
 
 /** 미니언 종류 → 소속 팀 */
@@ -136,6 +138,9 @@ export class GameScene extends Phaser.Scene implements LaneHost {
   private greetedCaptains = new Set<TeamId>();
   private passiveTimer = 0;
   private ultBusy = false;
+  private firstBlood = false;
+  private killStreak = 0;
+  private lastKillAt = -99;
 
   private gates = new Map<string, Phaser.GameObjects.GameObject[]>();
   private shields = new Map<string, Phaser.GameObjects.Image>();
@@ -212,6 +217,9 @@ export class GameScene extends Phaser.Scene implements LaneHost {
     this.greetedCaptains = new Set();
     this.passiveTimer = 0;
     this.ultBusy = false;
+    this.firstBlood = false;
+    this.killStreak = 0;
+    this.lastKillAt = -99;
     this.gates = new Map();
     this.shields = new Map();
     this.memories = [];
@@ -521,6 +529,26 @@ export class GameScene extends Phaser.Scene implements LaneHost {
   }
 
   /** 팀장의 전진 한계: 부장님이 다음 적 구조물 근처에 없으면 포탑 사거리 밖에서 대기 */
+  /** 아나운서: 퍼스트 블러드 / 연속 처치(1.6초 안) 더블~펜타 / 랜섬웨어 처치 */
+  private onPlayerKill(u: Unit) {
+    const now = this.simTime;
+    this.killStreak = now - this.lastKillAt < 1.6 ? this.killStreak + 1 : 1;
+    this.lastKillAt = now;
+    if (!this.firstBlood) {
+      this.firstBlood = true;
+      audio.announce('vo_firstblood', 2);
+      return;
+    }
+    const streak = this.killStreak;
+    // 같은 순간 여러 마리가 쓰러지면 마지막 처치 기준으로 한 번만 안내
+    this.time.delayedCall(250, () => {
+      if (this.killStreak !== streak || this.simTime - this.lastKillAt > 1.6) return;
+      const key = streak >= 5 ? 'vo_penta' : streak === 4 ? 'vo_quadra' : streak === 3 ? 'vo_triple' : streak === 2 ? 'vo_double' : '';
+      if (key) audio.announce(key, 1 + Math.min(streak, 5) / 10);
+      else if (u.kind === 'ransomware') audio.announce('vo_slain', 1);
+    });
+  }
+
   private captainStopS(lane: LaneRuntime) {
     const nextS = lane.turretAlive ? lane.sEnemyTurret : lane.inhibAlive ? lane.sInhib : -1;
     if (nextS < 0) return lane.allyStopS;
@@ -530,6 +558,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
   }
 
   private captainDown(u: Unit) {
+    audio.announce('vo_ally_down', 1);
     u.alive = false;
     u.hp = 0;
     u.refreshHp();
@@ -887,6 +916,8 @@ export class GameScene extends Phaser.Scene implements LaneHost {
       this.player.hp = Math.min(this.player.maxHp, this.player.hp + P.hpPerLevel + this.player.maxHp * 0.25);
       this.player.damage += P.attackPerLevel;
       audio.play('levelup');
+      const lv = this.level;
+      this.time.delayedCall(450, () => audio.announce(lv >= 3 ? 'vo_legendary' : 'vo_godlike', lv >= 3 ? 2.2 : 2));
       bus.emit('banner', { text: `LEVEL UP! Lv.${this.level}`, kind: 'level' });
       this.shockwave(this.player.x, this.player.y, 0xffe28a, 160, 600);
       this.lightPillar(this.player.x, this.player.y, 0xffe28a);
@@ -904,6 +935,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
     this.chasePath = [];
     this.attackTarget = null;
     this.lightPillar(p.x, p.y, 0x00b7ff);
+    audio.announce('vo_dead', 2);
     this.tweens.add({ targets: p.view, alpha: 0, duration: 500 });
     bus.emit('player:dead', BALANCE.player.respawnSeconds);
   }
@@ -968,7 +1000,8 @@ export class GameScene extends Phaser.Scene implements LaneHost {
         this.attachShieldFx(u, S.w.duration);
       }
       this.shockwave(p.x, p.y, 0x00b7ff, S.w.radius, 500);
-      this.playFrames(p.x, p.y + 10, ['fx_w_0', 'fx_w_1', 'fx_w_2', 'fx_w_3'], { height: 150, frameMs: 90, depth: p.y + 5, originY: 0.9 });
+      const wTex = this.textures.exists('fx_w_3') ? this.textures.get('fx_w_3').getSourceImage().width : 300;
+      this.playFrames(p.x, p.y + 14, ['fx_w_0', 'fx_w_1', 'fx_w_2', 'fx_w_3'], { height: 150, frameMs: 90, depth: p.y + 5, originY: 0.9, uniformScale: SHIELD_W.player / wTex });
       this.playFrames(p.x + 30, p.y - 120, ['fx_w_icon'], { height: 60, hold: 400 });
       this.floatText(p.x, p.y - 140, '보안 강화!', '#9fdcff', 18);
     } else {
@@ -990,7 +1023,6 @@ export class GameScene extends Phaser.Scene implements LaneHost {
     this.cd.r = S.cooldown;
     this.castAnim = 1.0;
     audio.play('r');
-    audio.voice('voice_summon');
     const teams: TeamId[] = ['push', 'dev', 'biz'];
     bus.emit('ult', { lines: teams.map((t) => CAPTAIN_DEFS[t].rallyLine) });
     const inBoss = !!(this.boss && this.boss.alive);
@@ -1511,6 +1543,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
     this.blastFx(b.x, b.y, 340);
     this.tweens.add({ targets: b.view, alpha: 0, scaleX: 1.6, scaleY: 0.2, duration: 900, onComplete: () => b.destroyView() });
     bus.emit('banner', { text: 'ZERO DAY 무력화!', sub: '넥서스 방어시설을 제거하세요', kind: 'boss' });
+    this.time.delayedCall(500, () => audio.announce('vo_baron', 3));
     bus.emit('boss:end');
     // 소환 버그 정리, 지원 미니언은 잠시 더 함께
     for (const u of this.units) {
@@ -1702,6 +1735,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
     if (u.isStructure) return this.structureDestroyed(u);
 
     const X = BALANCE.xp;
+    if (u.side === 'enemy' && src === this.player) this.onPlayerKill(u);
     if (u.side === 'enemy' && !this.dead && this.player.dist(u) < X.shareRange) {
       this.gainXp(u.kind === 'ransomware' ? X.ransomware : X.minion);
     }
@@ -1757,6 +1791,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
         this.removeShield(inh.structId);
       }
       bus.emit('banner', { text: '포탑 파괴!', sub: `다음 목표: ${lane.def.label} 억제기`, kind: 'turret' });
+      audio.announce('vo_turret', 2.5);
       if (!this.firstTurretDone) {
         this.firstTurretDone = true;
         this.time.delayedCall(1500, () => this.discoverMemory(MEMORY_TURRET_ID, '파괴된 포탑 속 기록'));
@@ -1766,6 +1801,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
       lane.gateOpen = true;
       this.openGate(laneId);
       bus.emit('banner', { text: '억제기 파괴!', sub: '적 본진 진입 가능', kind: 'turret' });
+      audio.announce('vo_inhib', 2.5);
       this.peekEnemyBase();
     } else if (u.kind === 'firewall') {
       bus.emit('banner', { text: '방화벽 제거!', kind: 'info' });
@@ -1920,6 +1956,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
     // 부장님의 최후의 일격
     this.beam(this.player.x, this.player.y - 70, nx.x, nx.y - 110, 0xffe28a);
     this.floatText(this.player.x, this.player.y - 140, '최후의 일격!', '#ffe28a', 22);
+    audio.announce('vo_finish', 3);
     for (let i = 0; i < 4; i++)
       this.time.delayedCall(250 + i * 260, () => {
         this.shockwave(nx.x, nx.y - 80, i % 2 ? 0xffffff : 0xb06bff, 300 + i * 160, 900);
@@ -1940,7 +1977,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
       });
       save.unlock(MEMORY_VICTORY_ID);
       audio.music('victory');
-      audio.voice('voice_victory');
+      audio.announce('vo_victory', 3);
       bus.emit('victory');
     });
   }
@@ -2184,12 +2221,13 @@ export class GameScene extends Phaser.Scene implements LaneHost {
   }
 
   /** 텍스처 프레임을 순서대로 재생하는 1회성 이펙트 */
-  playFrames(x: number, y: number, keys: string[], opts: { height: number; frameMs?: number; depth?: number; hold?: number; add?: boolean; flip?: boolean; originY?: number } ) {
+  playFrames(x: number, y: number, keys: string[], opts: { height: number; frameMs?: number; depth?: number; hold?: number; add?: boolean; flip?: boolean; originY?: number; uniformScale?: number } ) {
     const ks = keys.filter((k) => this.textures.exists(k));
     if (!ks.length) return null;
     const img = this.add.image(x, y, ks[0]).setOrigin(0.5, opts.originY ?? 0.5).setDepth(opts.depth ?? 4600).setFlipX(!!opts.flip);
     if (opts.add) img.setBlendMode('ADD');
-    const fit = () => img.setScale(opts.height / img.height);
+    // uniformScale: 프레임 크기가 서로 달라도 같은 배율로 표시 (원본 비율 유지)
+    const fit = () => img.setScale(opts.uniformScale ?? opts.height / img.height);
     fit();
     const ms = opts.frameMs ?? 90;
     ks.slice(1).forEach((k, i) => this.time.delayedCall(ms * (i + 1), () => { if (img.active) { img.setTexture(k); fit(); } }));
@@ -2246,8 +2284,9 @@ export class GameScene extends Phaser.Scene implements LaneHost {
   attachShieldFx(u: Unit, _dur: number) {
     if (!u.shieldFx) {
       const big = u.kind === 'player';
-      u.shieldFx = this.add.image(0, 8, big ? 'fx_w_3' : 'fx_w_2').setOrigin(0.5, 0.92).setAlpha(0.6);
-      u.shieldFx.setScale((big ? 150 : 84) / u.shieldFx.width);
+      // 돔이 캐릭터 전신(머리 포함)을 덮도록 크기 결정
+      u.shieldFx = this.add.image(0, 14, big ? 'fx_w_3' : 'fx_w_2').setOrigin(0.5, 0.9).setAlpha(0.6);
+      u.shieldFx.setScale((big ? SHIELD_W.player : u.captain ? SHIELD_W.captain : SHIELD_W.minion) / u.shieldFx.width);
       u.view.add(u.shieldFx);
     }
     u.shieldFx.setVisible(true);
