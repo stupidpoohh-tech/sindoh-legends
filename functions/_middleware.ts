@@ -1,4 +1,5 @@
 import { configured, Env, isAuthed, issueCookie, safeEqual } from './_lib/auth';
+import { FX_CSS, FX_HTML } from '../shared/welcomeFx';
 
 /**
  * PRIVATE(선물) 판: 사이트 전체를 서버에서 잠금.
@@ -73,7 +74,21 @@ h1{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
   #title .tl-art .welcome-fx { display:none; }
   .welcome-fx * { animation:none !important; }
 }
-</style></head><body><main><div class="welcome-fx" aria-hidden="true"><i class="welcome-glow"></i><i class="welcome-portal"></i><i class="welcome-ring"></i><i class="welcome-twinkle twinkle-a"></i><i class="welcome-twinkle twinkle-b"></i><i class="welcome-twinkle twinkle-c"></i><i class="welcome-spark" style="--x:18%;--delay:-0s;--duration:7s"></i><i class="welcome-spark" style="--x:33%;--delay:-1.7s;--duration:8s"></i><i class="welcome-spark" style="--x:47%;--delay:-3.4s;--duration:9s"></i><i class="welcome-spark" style="--x:62%;--delay:-5.1s;--duration:7s"></i><i class="welcome-spark" style="--x:76%;--delay:-6.8s;--duration:8s"></i><i class="welcome-spark" style="--x:86%;--delay:-8.5s;--duration:9s"></i></div>
+/* PC: 포스터를 왼쪽에, 나머지는 같은 그림을 흐리게 확장 + 오른쪽 입장 패널 */
+@media (min-width:601px) and (pointer:fine) {
+  html, body { overflow:hidden; background:url('/assets/game/welcome-poster.jpg') 18% top / auto 100% no-repeat,
+    radial-gradient(ellipse 45% 55% at 72% 50%, rgba(245,197,66,.14), transparent 70%),
+    radial-gradient(ellipse at 60% 40%, #16306e, #050d1f 75%); }
+  main { align-items:flex-end; justify-content:center; padding-right:7vw; }
+  h1 { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
+  .welcome-fx { display:block; position:absolute; top:0; height:100vh; width:56.28vh; left:calc((100% - 56.28vh) * .18); overflow:hidden; z-index:1; }
+  .entry-panel { position:relative; z-index:2; width:min(36vw,380px); padding:26px; box-sizing:border-box; border-radius:22px; border:1px solid #e8b94a88; background:#03112cd9; box-shadow:0 16px 40px #0007; animation:panelIn .9s cubic-bezier(.2,.8,.2,1) .5s both; }
+  .entry-panel p { margin-bottom:14px; } .entry-panel input { box-sizing:border-box; width:100%; background:#102754cc; } .entry-panel button { width:100%; }
+}
+@keyframes panelIn { from { opacity:0; transform:translateY(16px) scale(.97); } to { opacity:1; transform:none; } }
+.entry-panel { animation:panelIn .9s cubic-bezier(.2,.8,.2,1) .5s both; }
+${FX_CSS}
+</style></head><body><main><div class="welcome-fx" aria-hidden="true"><i class="welcome-glow"></i><i class="welcome-portal"></i><i class="welcome-ring"></i><i class="welcome-twinkle twinkle-a"></i><i class="welcome-twinkle twinkle-b"></i><i class="welcome-twinkle twinkle-c"></i><i class="welcome-spark" style="--x:18%;--delay:-0s;--duration:7s"></i><i class="welcome-spark" style="--x:33%;--delay:-1.7s;--duration:8s"></i><i class="welcome-spark" style="--x:47%;--delay:-3.4s;--duration:9s"></i><i class="welcome-spark" style="--x:62%;--delay:-5.1s;--duration:7s"></i><i class="welcome-spark" style="--x:76%;--delay:-6.8s;--duration:8s"></i><i class="welcome-spark" style="--x:86%;--delay:-8.5s;--duration:9s"></i>${FX_HTML}</div>
 <h1>SINDOH LEGENDS</h1><div class="entry-panel"><p>선물 받은 분만 입장할 수 있는 비공개 버전입니다.<br>입장 코드를 입력해 주세요.</p>
 <form method="post" action="/__enter"><input name="code" type="password" autocomplete="off" placeholder="입장 코드" aria-label="입장 코드" required>
 <p class="err">${msg}</p><button type="submit">입장</button></form></div></main></body></html>`;

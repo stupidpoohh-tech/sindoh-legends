@@ -6,6 +6,7 @@ import { runtime, VideoEntry } from '../config/runtime';
 import { ICONS, championSvg, svgDataUrl } from '../art/svgs';
 import { WORLD } from '../world/mapData';
 import { CAPTAIN_DEFS } from '../config/captains';
+import { FX_CSS, FX_HTML } from '../../shared/welcomeFx';
 
 /**
  * HTML 기반 UI: 타이틀, HUD, 튜토리얼, 일시정지, 기억 발견, 기록관, 영상, 승리 화면.
@@ -227,6 +228,14 @@ function buildTitle() {
     </div>
   </div>`);
   root.appendChild(el);
+  // 시작 화면 연출 (입장 코드 화면과 공통)
+  if (!document.getElementById('welcome-fx-css')) {
+    const st = document.createElement('style');
+    st.id = 'welcome-fx-css';
+    st.textContent = FX_CSS;
+    document.head.appendChild(st);
+  }
+  el.querySelectorAll('.welcome-fx').forEach((fx) => fx.insertAdjacentHTML('beforeend', FX_HTML));
   const soundBtn = $('#titleSound');
   const paintSound = () => el.classList.toggle('muted', !(save.data.sound.bgm || save.data.sound.sfx));
   paintSound();
