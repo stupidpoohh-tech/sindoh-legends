@@ -191,7 +191,7 @@ function buildTitle() {
     <div class="tp">
       <div class="clouds"></div>
       <div class="title-top">
-        <span class="tag">${runtime.assets.champion.affiliation} · ${esc(runtime.titleTag)}</span>
+        ${runtime.titleTag ? `<span class="tag">${runtime.assets.champion.affiliation} · ${esc(runtime.titleTag)}</span>` : '<span></span>'}
         <button class="img-btn" id="titleSound" aria-label="소리 켜기/끄기"><img src="${G('ui_sound')}" alt=""><i class="mute"></i></button>
       </div>
       <img class="logo-img" src="${G('title_logo')}" alt="SINDOH LEGENDS - THE LAST SUMMONER"
