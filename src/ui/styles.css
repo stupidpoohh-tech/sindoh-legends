@@ -712,3 +712,52 @@ body { -webkit-font-smoothing: antialiased; }
 @media (orientation: landscape) and (max-height: 520px) {
   #victory .acts .btn { white-space: nowrap; padding: 0 12px; font-size: 15px; gap: 6px; }
 }
+/* 선물 영상 입장 코드 입력 */
+.vcode { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.vcode input { width: min(80vw, 280px); min-height: 48px; padding: 0 14px; border-radius: 12px; border: 1.5px solid rgba(232,185,74,.6);
+  background: rgba(255,255,255,.08); color: #fff; font: 600 17px var(--font); text-align: center; letter-spacing: .08em; -webkit-user-select: text; user-select: text; }
+.vcode .err { min-height: 18px; color: #ffb0bb; font-size: 13px; }
+.vcode .btn { min-width: 160px; }
+
+/* ═══ 아이폰 사파리 전체화면 유도 ═══
+   문서를 화면보다 길게 만들어, 사용자가 위로 밀면 사파리가 주소창을 접도록 함 (게임은 #app 고정 레이어) */
+html.ios-swipe, html.ios-swipe body { position: static; overflow: visible; height: auto; touch-action: pan-y; }
+html.ios-swipe body { min-height: calc(100vh + 240px); }
+html.ios-swipe #app { position: fixed; inset: 0; }
+.swipe-guard {
+  position: fixed; inset: 0; z-index: 90; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  padding: 16px; text-align: center; background: rgba(3,10,26,.82); color: #fff; touch-action: pan-y;
+  -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+}
+.swipe-guard b { font-size: 19px; font-weight: 700; }
+.swipe-guard small { font-size: 13px; font-weight: 500; line-height: 1.55; color: #c6d3e4; }
+.swipe-guard em { font-style: normal; color: #ffe28a; font-weight: 600; }
+.swipe-guard .btn { margin-top: 6px; min-height: 44px; font-size: 14px; }
+.sg-hand { width: 34px; height: 54px; border: 3px solid #e9c46a; border-radius: 17px; position: relative; margin-bottom: 4px; }
+.sg-hand i { position: absolute; left: 50%; top: 30px; width: 8px; height: 8px; margin-left: -4px; border-radius: 50%; background: #e9c46a; animation: sgUp 1.4s ease-in-out infinite; }
+@keyframes sgUp { 0% { top: 34px; opacity: 0; } 30% { opacity: 1; } 100% { top: 6px; opacity: 0; } }
+
+/* ═══ 좌측 상단 HUD 축소 (가로 화면 기준) ═══ */
+#hud { --mm: clamp(80px, 23vh, 140px); }
+.hud-tl { gap: 6px; top: calc(4px + var(--safe-t)); left: calc(4px + var(--safe-l)); }
+.minimap-wrap { border-width: 9px; border-image-width: 9px; }
+.hud-info { width: clamp(170px, 21vw, 250px); gap: 3px; }
+.hud-info .player-card { border-width: 10px; border-image-width: 10px; gap: 6px; padding: 0 4px 0 0; }
+.hud-info .portrait { width: clamp(34px, 10vh, 46px); height: clamp(34px, 10vh, 46px); margin: -3px 0 -3px -3px; }
+.hud-info .portrait .lv { font-size: 10px; padding: 0 4px; }
+.hud-info .bars { gap: 3px; }
+.hud-info .bars .nm { font-size: clamp(10.5px, 3vh, 12px); letter-spacing: .02em; }
+.hud-info .bars .nm b { font-size: clamp(10px, 2.8vh, 11.5px); }
+.hud-info .bar.hp { height: 9px; }
+.hud-info .bar.xp { height: 4px; }
+.hud-info .objective { font-size: clamp(11px, 3.1vh, 13px); line-height: 1.3; border-width: 8px; border-image-width: 8px; padding: 0 4px 0 22px; }
+.hud-info .objective::before { font-size: 10.5px; margin-right: 4px; }
+.hud-info .buff { font-size: 10.5px; padding: 1px 6px 1px 1px; }
+.hud-info .buff img { width: 17px; height: 17px; }
+#pauseBtn { width: 42px; height: 42px; top: calc(5px + var(--safe-t)); right: calc(5px + var(--safe-r)); }
+@media (min-height: 600px) {
+  #hud { --mm: clamp(120px, 20vh, 170px); }
+  .hud-info { width: clamp(220px, 20vw, 300px); }
+}
+.hud-info { width: clamp(196px, 24vw, 260px); }
+.hud-info .bars .nm { gap: 4px; }

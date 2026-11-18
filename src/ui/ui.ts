@@ -65,15 +65,19 @@ export function initUi(h0: UiHooks) {
     'touchmove',
     (e) => {
       const el = e.target as HTMLElement;
-      if (!el.closest('.panel') && !el.closest('video')) e.preventDefault();
+      // 아이폰 '위로 밀기' 안내 중에는 문서 스크롤을 허용해 주소창이 접히게 함
+      if (!el.closest('.panel') && !el.closest('video') && !el.closest('#swipeGuard')) e.preventDefault();
     },
     { passive: false },
   );
   document.addEventListener('contextmenu', (e) => e.preventDefault());
 
+  // 선물 버전: NFC 주소의 입장 코드를 곧바로 처리 (주소창에서 코드 제거)
+  if (__EDITION__ === 'private') import('./privateVideo').then((pv) => pv.initPrivateAuth());
   buildTitle();
   buildHud();
   buildRotateGuard();
+  buildIosFullscreen();
   bus.on('loading', (v: number) => {
     const bar = $('#title .loading-bar i');
     if (bar) bar.style.width = Math.round(v * 100) + '%';
@@ -160,6 +164,56 @@ function buildRotateGuard() {
   };
   mq.addEventListener?.('change', onChange);
   window.addEventListener('orientationchange', () => setTimeout(onChange, 300));
+}
+
+/**
+ * 아이폰 사파리: 웹페이지가 전체화면 API 를 쓸 수 없으므로
+ * ① 가로 화면에서 주소창이 보이면 '위로 밀어 올리기' 안내 → 문서를 스크롤하면 사파리가 주소창을 접음
+ * ② 홈 화면에 추가하면 주소창 없이 앱처럼 실행 (안내 문구 제공)
+ */
+const IS_IOS = /iP(hone|od|ad)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const IS_STANDALONE = (navigator as any).standalone === true || window.matchMedia('(display-mode: standalone)').matches || window.matchMedia('(display-mode: fullscreen)').matches;
+function buildIosFullscreen() {
+  if (!IS_IOS || IS_STANDALONE) return;
+  document.documentElement.classList.add('ios-swipe');
+  const el = h(`<div id="swipeGuard" class="swipe-guard hidden">
+      <div class="sg-hand"><i></i></div>
+      <b>화면을 위로 밀어 올려 주세요</b>
+      <small>주소창이 사라지고 전체 화면으로 플레이할 수 있습니다.<br>
+      공유 버튼 → <em>홈 화면에 추가</em>로 설치하면 처음부터 주소창 없이 실행됩니다.</small>
+      <button class="btn ghost" type="button" data-a="skip">이대로 계속하기</button>
+    </div>`);
+  root.appendChild(el);
+  // '이대로 계속하기'는 이번 접속(탭) 동안 유지
+  let skipped = false;
+  try {
+    skipped = sessionStorage.getItem('sl_swipe_skip') === '1';
+  } catch {
+    /* 저장소 차단 */
+  }
+  ($('[data-a=skip]', el) as HTMLElement).onclick = (e) => {
+    e.stopPropagation();
+    skipped = true;
+    try {
+      sessionStorage.setItem('sl_swipe_skip', '1');
+    } catch {
+      /* 저장소 차단 */
+    }
+    el.classList.add('hidden');
+  };
+  let maxLandscapeH = 0;
+  const check = () => {
+    const landscape = window.innerWidth > window.innerHeight;
+    if (landscape) maxLandscapeH = Math.max(maxLandscapeH, window.innerHeight);
+    // 가로일 때 전체 높이 = 화면의 짧은 변 (또는 지금까지 관찰한 가장 큰 가로 높이)
+    const full = Math.max(Math.min(screen.width, screen.height), maxLandscapeH);
+    const chromeVisible = landscape && window.innerHeight < full - 24;
+    el.classList.toggle('hidden', skipped || !chromeVisible);
+  };
+  window.addEventListener('resize', check);
+  window.addEventListener('orientationchange', () => setTimeout(check, 400));
+  window.visualViewport?.addEventListener('resize', check);
+  check();
 }
 
 /** 시작 버튼(사용자 입력) 안에서 호출: 안드로이드 크롬은 전체화면 + 가로 고정, 미지원 기기는 그대로 진행 */
@@ -795,9 +849,11 @@ function openVideo(v: VideoEntry, onClose?: () => void) {
     ($('[data-a="fs"]', el) as HTMLElement).style.visibility = 'hidden';
   };
   let video: HTMLVideoElement | null = null;
-  if (!v.src) placeholder('영상이 아직 등록되지 않았습니다.');
-  else {
-    // 필요한 시점에만 로딩
+  const fsBtn = $('[data-a="fs"]', el) as HTMLElement;
+  /** 영상 요소 생성·재생 (필요한 시점에만 로딩) */
+  const mount = (src: string, onFail: () => void) => {
+    stage.innerHTML = '';
+    fsBtn.style.visibility = '';
     video = document.createElement('video');
     video.controls = true;
     video.playsInline = true;
@@ -805,17 +861,68 @@ function openVideo(v: VideoEntry, onClose?: () => void) {
     video.setAttribute('webkit-playsinline', '');
     video.preload = 'metadata';
     if (v.poster) video.poster = v.poster;
-    video.addEventListener('error', () => placeholder('영상 파일이 아직 준비되지 않았습니다. (곧 업로드될 예정입니다)'), { once: true });
-    video.src = v.src;
+    video.addEventListener('error', onFail, { once: true });
+    video.src = src;
     stage.appendChild(video);
     video.play().catch(() => {});
+  };
+  const unmount = () => {
+    if (!video) return;
+    video.pause();
+    video.removeAttribute('src');
+    video.load();
+    video = null;
+  };
+  const showError = (msg: string, retry?: () => void) => {
+    unmount();
+    placeholder(msg);
+    if (retry) {
+      const b = h(`<button class="btn primary" style="margin-top:14px">다시 시도</button>`);
+      b.onclick = (e) => {
+        e.stopPropagation();
+        retry();
+      };
+      stage.querySelector('.vplaceholder')!.appendChild(b);
+    }
+  };
+  if (__EDITION__ === 'private') {
+    import('./privateVideo').then((pv) => {
+      const askCode = (msg = '') => {
+        unmount();
+        fsBtn.style.visibility = 'hidden';
+        stage.innerHTML = `<form class="vplaceholder vcode"><div class="big">${ICONS.lock}</div><h3>입장 코드를 입력해 주세요</h3>
+          <p>선물 영상은 입장 코드가 있어야 볼 수 있습니다.</p>
+          <input type="password" autocomplete="off" inputmode="text" maxlength="64" aria-label="입장 코드" placeholder="입장 코드">
+          <p class="err">${esc(msg)}</p><button class="btn primary" type="submit">확인</button></form>`;
+        const form = stage.querySelector('form')!;
+        const input = form.querySelector('input')!;
+        form.onsubmit = async (e) => {
+          e.preventDefault();
+          if (await pv.login(input.value)) play();
+          else askCode('입장 코드가 맞지 않습니다.');
+        };
+        setTimeout(() => input.focus(), 50);
+      };
+      const play = () => {
+        stage.innerHTML = '<div class="vplaceholder"><p>영상을 불러오는 중…</p></div>';
+        mount(pv.videoUrl(v.id), async () => {
+          const why = await pv.diagnose(v.id);
+          if (why === 'auth') askCode('인증이 만료되었습니다. 다시 입력해 주세요.');
+          else if (why === 'missing') showError('영상이 아직 준비되지 않았습니다. (곧 업로드될 예정입니다)');
+          else showError('영상을 불러오지 못했습니다. 네트워크 연결을 확인한 뒤 다시 시도해 주세요.', play);
+        });
+      };
+      // 최초 확인 결과가 아니라 현재 인증 상태 기준 (코드 입력 후 다른 영상도 바로 재생)
+      pv.initPrivateAuth().then(() => (pv.isAuthed() ? play() : askCode()));
+    });
+  } else if (v.src) {
+    const tryPlay = () => mount(v.src, () => showError('영상을 불러오지 못했습니다.', tryPlay));
+    tryPlay();
+  } else {
+    placeholder('포트폴리오 공개 버전에서는 영상이 제공되지 않습니다.');
   }
   const close = () => {
-    if (video) {
-      video.pause();
-      video.removeAttribute('src');
-      video.load();
-    }
+    unmount();
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
     el.remove();
     fsm.pop();

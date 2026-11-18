@@ -8,3 +8,5 @@ public/media/videos/*
 public/media/thumbs/*
 !public/media/thumbs/README.md
 public/assets/images/private_*
+.wrangler
+.dev.vars

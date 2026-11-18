@@ -112,23 +112,36 @@ Cloudflare Pages 는 **파일 하나당 25MiB 제한**이 있어 3분 분량 영
 
 ## 교체용 파일 위치
 
-### 영상 — `public/config/media.json`
+### 영상 — 비공개 R2 + Pages Functions
 
-| id | 내용 | 기본 경로 | 해금 조건 |
-|---|---|---|---|
-| workshop_01 | 워크숍 영상 1 | `public/media/videos/workshop_01.mp4` | 아군 본진의 기록 상자 |
-| workshop_02 | 워크숍 영상 2 | `public/media/videos/workshop_02.mp4` | 숲속의 기억 구슬 (탑-미드 사이 정글) |
-| workshop_03 | 워크숍 영상 3 | `public/media/videos/workshop_03.mp4` | 강가의 기념비 (미드-바텀 사이 강) |
-| esports | 사내 e스포츠 대회 | `public/media/videos/esports.mp4` | 첫 적 포탑 파괴 |
-| thankyou | 직원 감사 영상 | `public/media/videos/thankyou.mp4` | 최종 승리 |
+영상은 GitHub·정적 빌드에 넣지 않고 **비공개 R2 버킷(`sindoh-legends-videos`, 바인딩 `VIDEOS`)** 에 둡니다.
+선물(PRIVATE) 배포에서만 인증을 거친 사용자에게 `/api/video/<id>` 로 스트리밍합니다(HTTP Range·206 지원, `video/mp4`).
 
-- 썸네일: `public/media/thumbs/<id>.jpg` (16:9)
-- 파일이 없으면 플레이스홀더 화면이 표시되고 게임은 정상 진행됩니다.
-- 영상은 기록을 열 때만 로딩됩니다(`preload="metadata"`).
-- `public/media/videos/`, `public/media/thumbs/` 안의 파일은 `.gitignore` 처리되어 **저장소에 올라가지 않습니다.**
-  접근 제한 호스팅(사내 스토리지·서명 URL 등)을 쓰려면 `media.json`의 `src`에 URL을 넣으세요.
-- `media.json` 은 빌드 후 `dist/config/media.json` 으로 복사되므로 **빌드 없이 dist 안의 파일만 수정해도** 반영됩니다.
-- 권장 인코딩: H.264 + AAC MP4, 720p, `-movflags +faststart` (iPhone 호환)
+| 게임 id | R2 객체 키 (`functions/_lib/videos.ts`) | 해금 조건 |
+|---|---|---|
+| workshop_01 | 워크샵1.mp4 | 아군 본진의 기록 상자 |
+| workshop_02 | 워크샵2.mp4 | 숲속의 기억 구슬 |
+| workshop_03 | 워크샵3.mp4 | 강가의 기념비 |
+| esports | 게임대회.mp4 | 첫 적 포탑 파괴 |
+| thankyou | 감사영상.mp4 (업로드 필요) | 최종 승리 |
+
+- 제목·설명·해금 조건: `public/config/media.json` (경로는 비워 둠)
+- 파일 이름을 바꾸거나 새 영상을 올리면 `functions/_lib/videos.ts` 의 키만 맞추면 됩니다.
+- 3개 영상(워크샵1·2, 게임대회)은 MP4 인덱스(moov)가 파일 끝에 있어 첫 로딩이 조금 느릴 수 있습니다.
+  `ffmpeg -i in.mp4 -c copy -movflags +faststart out.mp4` 로 변환해 다시 올리면 개선됩니다.
+
+#### 배포 판(EDITION)
+
+| 판 | 설정 | 영상 |
+|---|---|---|
+| PUBLIC (기본값, 포트폴리오) | `EDITION` 미설정 | `/api/*` 전부 404, 번들에 영상 API 코드·경로 없음 |
+| PRIVATE (선물) | `EDITION=private` + `GIFT_CODE` + `SESSION_SECRET` | 입장 코드 인증 후 재생 |
+
+#### 인증 방식
+
+- 입장 코드(`GIFT_CODE`)를 서버에서 검증한 뒤 서명된 HttpOnly·Secure 쿠키(30일)를 발급합니다. 영상 API 는 매 요청 쿠키 서명·만료를 검증하며, 인증이 없으면 401 입니다.
+- NFC 태그 주소에 코드를 넣으면 자동으로 인증됩니다: `https://sindoh-legends.pages.dev/?k=<입장코드>` (인증 후 주소창에서 코드가 지워짐)
+- 코드 없이 접속한 사람은 영상을 열 때 입장 코드 입력 화면이 나옵니다.
 
 ### 일러스트·스프라이트 — `art-src/` → `public/assets/game/`
 
