@@ -259,3 +259,8 @@ src/art/mapPainter.ts         협곡 맵 캔버스 렌더링
 src/audio/audio.ts            효과음·배경음 합성 및 파일 재생
 src/ui/ui.ts, styles.css      타이틀·HUD·튜토리얼·일시정지·기록관·영상·승리 화면
 ```
+
+### 게임대회 영상만 교체
+
+PRIVATE 프로젝트에 `VIDEO_ESPORTS_KEY`를 설정하면 `esports` 항목에만 우선 적용됩니다. 기존 `VIDEO_KEYS`의 워크숍 매핑은 유지됩니다. 변경 후 재배포해야 적용됩니다.
+기록관과 전체 이어보기는 게임대회 → 워크숍 1 → 워크숍 2 → 워크숍 3 순서이며, 이어보기는 해금된 영상만 포함합니다.
