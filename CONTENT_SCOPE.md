@@ -17,7 +17,7 @@
 
 | 항목 | 위치 | 비고 |
 |---|---|---|
-| 영상 5개 | 비공개 R2 버킷 `sindoh-legends-videos` | 공개 URL(r2.dev) 비활성, PRIVATE 프로젝트에만 바인딩 |
+| 기념 영상 4개 | 비공개 R2 버킷 `sindoh-legends-videos` | 공개 URL(r2.dev) 비활성, PRIVATE 프로젝트에만 바인딩 |
 | 영상 id ↔ R2 파일 이름 | PRIVATE 프로젝트 암호화 변수 `VIDEO_KEYS` | |
 | 입장 코드 | PRIVATE 프로젝트 암호화 변수 `GIFT_CODE` | NFC 태그 주소에 포함 |
 | 쿠키 서명 키 | PRIVATE 프로젝트 암호화 변수 `SESSION_SECRET` | |

@@ -25,20 +25,12 @@
       "title": "사내 e스포츠 대회",
       "description": "부장님이 개최하신 사내 e스포츠 대회 하이라이트",
       "unlockBy": "mem_turret"
-    },
-    {
-      "id": "thankyou",
-      "title": "부장님께 드리는 감사 메시지",
-      "description": "함께한 동료들이 전하는 마음",
-      "unlockBy": "mem_victory"
     }
   ],
   "ending": {
     "title": "THE LEGENDARY GAME MASTER",
-    "line1": "부장님, 마지막 승급전에서 승리하셨습니다.",
-    "line2": "그리고 부장님께 전하고 싶은 메시지가 도착했습니다.",
-    "thanksButton": "감사 메시지 열기",
-    "thanksVideo": "thankyou"
+    "line1": "부장님과 함께 만든 승리입니다.",
+    "line2": "함께해 주셔서 감사합니다.\n부장님의 새로운 시작을 응원합니다."
   },
   "titleTag": "",
   "credit": "본 게임은 퇴직 기념을 위해 제작된 비상업용 게임입니다."

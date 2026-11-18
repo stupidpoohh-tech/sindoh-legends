@@ -23,8 +23,6 @@ export interface EndingText {
   title: string;
   line1: string;
   line2: string;
-  thanksButton: string;
-  thanksVideo: string;
 }
 
 export const runtime = {

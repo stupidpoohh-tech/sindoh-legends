@@ -748,7 +748,7 @@ function openArchive() {
   const cards = runtime.videos
     .map((v) => {
       const open = unlocked.has(v.unlockBy);
-      const hint = v.unlockBy === 'mem_victory' ? '최종 승리 후 공개' : v.unlockBy === 'mem_turret' ? '적 포탑을 파괴하면 해금' : '협곡 곳곳의 기억을 찾아보세요';
+      const hint = v.unlockBy === 'mem_turret' ? '적 포탑을 파괴하면 해금' : '협곡 곳곳의 기억을 찾아보세요';
       return `<button class="vcard ${open ? '' : 'locked'}" data-id="${v.id}" ${open ? '' : 'aria-disabled="true"'}>
         <div class="th">${open && v.poster ? `<img src="${esc(v.poster)}" alt="" onerror="this.remove()">` : ''}${open ? ICONS.play : ICONS.lock}</div>
         <div class="meta"><b>${open ? esc(v.title) : '잠긴 기억'}</b>
@@ -953,7 +953,7 @@ function showVictory() {
     <div class="l2">${esc(runtime.ending.line1)}</div>
     <div class="l3">${esc(runtime.ending.line2)}</div>
     <div class="acts">
-      ${runtime.ending.thanksButton ? `<button class="btn gold" data-a="thanks">${ICONS.play}<span>${esc(runtime.ending.thanksButton)}</span></button>` : ''}
+      <button class="btn gold" data-a="title">타이틀로 돌아가기</button>
       <button class="btn" data-a="archive">${ICONS.archive}<span>추억의 기록관</span></button>
       <button class="btn ghost" data-a="again">다시 플레이</button>
     </div>
@@ -972,13 +972,11 @@ function showVictory() {
     const a = (e.target as HTMLElement).closest('[data-a]')?.getAttribute('data-a');
     if (!a) return;
     audio.play('click');
-    if (a === 'thanks') {
-      const v = runtime.videos.find((x) => x.id === runtime.ending.thanksVideo);
-      if (v) openVideo(v);
-    } else if (a === 'archive') openArchive();
+    if (a === 'title') hooks.quitToTitle();
+    else if (a === 'archive') openArchive();
     else if (a === 'again') {
       el.remove();
-      hooks.quitToTitle();
+      hooks.restartGame();
     }
   };
 }

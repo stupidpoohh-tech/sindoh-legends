@@ -10,7 +10,7 @@ import { FACE_ANCHOR } from '../art/svgs';
 import { NavGrid } from '../world/grid';
 import {
   WORLD, LANES, ALLY_BASE, ENEMY_BASE, BASE_RADIUS, ALLY_NEXUS, ENEMY_NEXUS, BOSS_SPAWN, FIREWALLS,
-  MEMORY_SPOTS, MEMORY_TURRET_ID, MEMORY_VICTORY_ID, Pt, TeamId,
+  MEMORY_SPOTS, MEMORY_TURRET_ID, Pt, TeamId,
 } from '../world/mapData';
 import { Unit, Kind, Side } from '../entities/Unit';
 import { CAPTAIN_DEFS } from '../config/captains';
@@ -1975,7 +1975,6 @@ export class GameScene extends Phaser.Scene implements LaneHost {
         d.stage = 'cleared';
         d.progress = null;
       });
-      save.unlock(MEMORY_VICTORY_ID);
       audio.music('victory');
       audio.announce('vo_victory', 3);
       bus.emit('victory');

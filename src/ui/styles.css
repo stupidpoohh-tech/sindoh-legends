@@ -320,7 +320,7 @@ button { font-family: inherit; color: inherit; border: 0; background: none; curs
 #victory img.champ { position: relative; height: min(26vh, 210px); animation: heroFloat 2.4s ease-in-out infinite, fadeUp .8s .4s both; }
 #victory .l1 { position: relative; font-size: clamp(16px, 4.6vw, 22px); font-weight: 700; letter-spacing: .22em; color: #ffe28a; animation: fadeUp .8s .8s both; }
 #victory .l2 { position: relative; font-size: clamp(16px, 4.4vw, 20px); font-weight: 700; margin-top: 10px; line-height: 1.5; animation: fadeUp .8s 1.6s both; }
-#victory .l3 { position: relative; font-size: clamp(14px, 4vw, 17px); color: #bfe0ff; margin-top: 4px; animation: fadeUp .8s 2.6s both; }
+#victory .l3 { white-space: pre-line; line-height: 1.65; position: relative; font-size: clamp(14px, 4vw, 17px); color: #bfe0ff; margin-top: 4px; animation: fadeUp .8s 2.6s both; }
 #victory .acts { position: relative; margin-top: 18px; width: min(100%, 380px); display: flex; flex-direction: column; gap: 10px; animation: fadeUp .8s 3.3s both; }
 @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } }
 .confetti { position: absolute; top: -20px; width: 8px; height: 14px; border-radius: 2px; animation: fall linear forwards; pointer-events: none; }

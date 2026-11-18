@@ -138,7 +138,6 @@ export const MEMORY_SPOTS: MemorySpot[] = [
 ];
 /** 첫 적 포탑 파괴 시 획득하는 기록 id */
 export const MEMORY_TURRET_ID = 'mem_turret';
-export const MEMORY_VICTORY_ID = 'mem_victory';
 
 export function dist(a: Pt, b: Pt) {
   return Math.hypot(a.x - b.x, a.y - b.y);
