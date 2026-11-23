@@ -190,7 +190,8 @@ python3 tools/build_sprites.py
 
 | 파일 | 원본 | 재생 시점 |
 |---|---|---|
-| bgm_login.mp3 | login.mp4 | 타이틀(첫 터치 후), 입장 연출, 승리 화면 |
+| bgm_title.mp3 | title.mp4 | 타이틀(첫 터치 후), 입장 연출 |
+| bgm_login.mp3 | login.mp4 | 승리 화면 |
 | bgm_game.mp3 | game bgm.mp4 | 게임 중(보스전 포함, 별도 보스 곡이 없으면 이어서 재생) |
 | vo_*.mp3 (17개) | narratino.mp4 에서 필요한 대사만 잘라냄 | 아래 표 |
 

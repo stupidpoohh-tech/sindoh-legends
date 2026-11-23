@@ -139,10 +139,10 @@
   },
   "audio": {
     "_comment": "배경음악·대사 파일. 비우면 내장 합성 음악/효과음을 사용합니다. 대사는 해당 상황에서 한 번씩 재생됩니다.",
-    "bgm_title": "assets/audio/bgm_login.mp3",
+    "bgm_title": "assets/audio/bgm_title.mp3",
     "bgm": "assets/audio/bgm_game.mp3",
     "bgm_boss": "",
-    "bgm_victory": "",
+    "bgm_victory": "assets/audio/bgm_login.mp3",
     "vo_welcome": "assets/audio/vo_welcome.mp3",
     "vo_minions": "assets/audio/vo_minions.mp3",
     "vo_firstblood": "assets/audio/vo_firstblood.mp3",
