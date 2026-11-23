@@ -134,7 +134,27 @@ export function initUi(h0: UiHooks) {
     if (fsm.baseState === GameState.TITLE && fsm.state !== GameState.VIDEO) audio.music('title');
   };
   document.addEventListener('pointerdown', titleMusic, { capture: true });
+  // 브라우저가 허용하면 터치 전에도 바로 재생 시도, 막히면 터치 안내 표시
+  autoplayTitleMusic();
   document.addEventListener('keydown', titleMusic, { capture: true, once: true });
+}
+
+/** 타이틀 음악 자동재생 시도 + 차단 시 '터치하면 음악 시작' 안내 */
+function autoplayTitleMusic() {
+  audio.music('title');
+  const hint = document.querySelector<HTMLElement>('#tapSound');
+  if (!hint) return;
+  const el = audio.currentBgm;
+  const sync = () => {
+    const show = fsm.baseState === GameState.TITLE && fsm.state !== GameState.VIDEO && audio.musicBlocked;
+    hint.classList.toggle('show', show);
+  };
+  if (el) {
+    el.addEventListener('playing', sync);
+    el.addEventListener('pause', sync);
+  }
+  document.addEventListener('pointerdown', () => setTimeout(sync, 400), { capture: true });
+  setTimeout(sync, 700);
 }
 
 /* ═════════════ 상태 → 화면 ═════════════ */
@@ -204,6 +224,7 @@ function buildTitle() {
         <img class="minions" src="${G('title_minions')}" alt="" onerror="this.remove()">
       </div>
       <div class="title-actions">
+        <div class="tap-sound" id="tapSound" aria-live="polite"><i class="eq"><b></b><b></b><b></b></i><span>화면을 터치하면 음악이 시작됩니다</span></div>
         <div class="loading-bar"><i></i></div>
         <button class="pill-btn gold hidden" id="continueBtn">이어하기</button>
         <button class="pill-btn" id="startBtn" disabled><span>불러오는 중…</span></button>

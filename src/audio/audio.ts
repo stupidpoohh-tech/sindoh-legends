@@ -357,6 +357,15 @@ class AudioEngine {
     if (this.ctx) this.startSynthMusic();
   }
 
+  /** 배경음악이 브라우저 자동재생 제한으로 대기 중인지 */
+  get musicBlocked() {
+    const el = this.bgmEl;
+    return !!el && el.paused && this.bgmOn;
+  }
+  get currentBgm() {
+    return this.bgmEl;
+  }
+
   /** 사용자 입력 후 재생이 막혀 있던 배경음악 재시도 */
   resumeMusic() {
     const el = this.bgmEl;
