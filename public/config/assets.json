@@ -161,9 +161,9 @@
     "vo_finish": "assets/audio/vo_finish.mp3",
     "vo_victory": "assets/audio/vo_victory.mp3",
     "sfx_attack": "",
-    "sfx_skill_q": "",
-    "sfx_skill_w": "",
-    "sfx_skill_r": "",
+    "sfx_skill_q": "assets/audio/sfx_skill_q.mp3",
+    "sfx_skill_w": "assets/audio/sfx_skill_w.mp3",
+    "sfx_skill_r": "assets/audio/sfx_skill_r.mp3",
     "sfx_turret_destroy": "",
     "sfx_boss_appear": "",
     "sfx_victory": ""

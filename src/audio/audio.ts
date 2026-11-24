@@ -11,6 +11,7 @@ type Sfx =
   | 'attack' | 'hit' | 'q' | 'w' | 'r' | 'turretShot' | 'explode' | 'turretDestroy' | 'levelup'
   | 'bossAppear' | 'bossShot' | 'bossAoe' | 'victory' | 'memory' | 'click' | 'welcome' | 'summon' | 'lock' | 'warn';
 
+const SKILL_FILE_GAIN: Partial<Record<Sfx, number>> = { q: 0.5, w: 0.6, r: 0.6 };
 const FILE_KEY: Partial<Record<Sfx, string>> = {
   attack: 'sfx_attack',
   q: 'sfx_skill_q',
@@ -206,7 +207,8 @@ class AudioEngine {
     if (now - (this.lastPlay.get(name) || 0) < minGap) return;
     this.lastPlay.set(name, now);
     const fk = FILE_KEY[name];
-    if (fk && this.playFile(fk)) return;
+    // 스킬 효과음 파일은 음성·배경음악보다 튀지 않도록 낮춰 재생
+    if (fk && this.playFile(fk, SKILL_FILE_GAIN[name] ?? 1)) return;
     const t = ctx.currentTime;
     switch (name) {
       case 'attack':
