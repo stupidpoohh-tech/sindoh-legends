@@ -11,7 +11,8 @@ type Sfx =
   | 'attack' | 'hit' | 'q' | 'w' | 'r' | 'turretShot' | 'explode' | 'turretDestroy' | 'levelup'
   | 'bossAppear' | 'bossShot' | 'bossAoe' | 'victory' | 'memory' | 'click' | 'welcome' | 'summon' | 'lock' | 'warn';
 
-const SKILL_FILE_GAIN: Partial<Record<Sfx, number>> = { q: 0.5, w: 0.6, r: 0.6 };
+/** 스킬 효과음 증폭 배율 (리미터를 거쳐 찢어지지 않게 키움) */
+const SKILL_FILE_GAIN: Partial<Record<Sfx, number>> = { q: 2.6, w: 3.0, r: 2.8 };
 const FILE_KEY: Partial<Record<Sfx, string>> = {
   attack: 'sfx_attack',
   q: 'sfx_skill_q',
@@ -159,14 +160,29 @@ class AudioEngine {
   }
 
   /** 파일 재생 성공 시 true */
-  private playFile(key: string, gain = 1) {
+  private limiter: DynamicsCompressorNode | null = null;
+  private skillLimiter() {
+    if (!this.limiter && this.ctx) {
+      const c = this.ctx.createDynamicsCompressor();
+      c.threshold.value = -3;
+      c.knee.value = 2;
+      c.ratio.value = 20;
+      c.attack.value = 0.002;
+      c.release.value = 0.18;
+      c.connect(this.sfxBus);
+      this.limiter = c;
+    }
+    return this.limiter || undefined;
+  }
+
+  private playFile(key: string, gain = 1, out?: AudioNode) {
     const buf = this.files.get(key);
     if (!buf || !this.ctx) return false;
     const src = this.ctx.createBufferSource();
     src.buffer = buf;
     const g = this.ctx.createGain();
     g.gain.value = gain;
-    src.connect(g).connect(this.sfxBus);
+    src.connect(g).connect(out || this.sfxBus);
     src.start();
     return true;
   }
@@ -207,8 +223,9 @@ class AudioEngine {
     if (now - (this.lastPlay.get(name) || 0) < minGap) return;
     this.lastPlay.set(name, now);
     const fk = FILE_KEY[name];
-    // 스킬 효과음 파일은 음성·배경음악보다 튀지 않도록 낮춰 재생
-    if (fk && this.playFile(fk, SKILL_FILE_GAIN[name] ?? 1)) return;
+    // 스킬 효과음 파일은 증폭 후 리미터로 피크만 눌러 크게 재생
+    const boost = SKILL_FILE_GAIN[name];
+    if (fk && this.playFile(fk, boost ?? 1, boost ? this.skillLimiter() : undefined)) return;
     const t = ctx.currentTime;
     switch (name) {
       case 'attack':
