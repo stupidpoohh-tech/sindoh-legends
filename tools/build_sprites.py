@@ -175,6 +175,18 @@ for r, row in enumerate(names):
         if n in W_BOXES:  # W 보호막은 격자 칸보다 넓어 실제 위치로 잘라냄
             im = largest(crop(fx, *W_BOXES[n]), dil=3)
         save('fx_' + n, im, scale=0.75)
+# W 보호막 4단계: 별도 투명 원본(방어막1~4.png)으로 교체 — 이미 글로우가 0까지 사라지므로 가장자리 처리 없이 여백만 둠
+W_RING = 320  # 모든 단계의 바닥 링 폭을 같게 맞춰 프레임이 바뀌어도 크기가 튀지 않게 함
+for i in range(4):
+    im = Image.open(os.path.join(SRC, f'방어막{i + 1}.png')).convert('RGBA')
+    a = np.array(im); a[:, :, 3][a[:, :, 3] < 4] = 0; im = Image.fromarray(a)
+    im = im.crop(im.getbbox())
+    im = im.resize((W_RING, round(im.height * W_RING / im.width)), Image.LANCZOS)
+    pad = 10
+    padded = Image.new('RGBA', (im.width + pad * 2, im.height + pad * 2))
+    padded.paste(im, (pad, pad))
+    padded.save(os.path.join(OUT, f'fx_w_{i}.webp'), 'WEBP', quality=88, method=6)
+    manifest[f'fx_w_{i}'] = [padded.width, padded.height]
 save('fx_purple_blast', largest(load('보랏빛 마법 충격파 폭발.png'), keep_all=True), height=300)
 save('fx_red_strike', largest(load('붉은 번개 충격파 이펙트.png'), keep_all=True), height=320)
 
@@ -314,7 +326,9 @@ for team, (fname, needs_bg, B) in CAPTAINS.items():
     save(f'fx_cap_{team}_bolt', largest(crop(fx_sheet, *B['bolt']), dil=8), height=60)
     if team == 'push':
         # 추진팀장 기본 서 있는 모습: 단독 일러스트(추진팀장2.png)를 시트 대기 프레임과 같은 키로 맞춤
-        idle_h = round(largest(crop(sheet, *B['idle'][0])).height * CAP_SCALE)
+        # 게임은 대기 그림 높이로 전체 배율을 정하므로, 달리기 모습이 개발(약 68px)·사업(약 78px)팀장의 중간인 73px로 보이게 대기 높이를 정함
+        run_h = largest(crop(sheet, *B['run'][0])).height * CAP_SCALE
+        idle_h = round(run_h * 82 / 73)
         save('cap_push_idle_0', largest(load('추진팀장2.png')), height=idle_h, center=True)
 
 # 게임 코드용 목록 갱신
