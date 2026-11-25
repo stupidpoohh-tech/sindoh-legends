@@ -46,8 +46,6 @@ class AudioEngine {
   private musicStep = 0;
   private nextNoteTime = 0;
   private bgmEl: HTMLAudioElement | null = null;
-  /** 배경음악 요소 풀 (url → 요소). iOS 에서는 사용자 입력 중 한 번 재생된 요소만 이후 자동 재생 가능 */
-  private bgmPool = new Map<string, HTMLAudioElement>();
   private fadeTimer: number | null = null;
   private voiceUntil = 0;
   private voicePri = 0;
@@ -119,32 +117,41 @@ class AudioEngine {
     return '';
   }
 
-  private bgmElement(url: string) {
-    let el = this.bgmPool.get(url);
-    if (!el) {
-      el = new Audio();
-      el.preload = 'none';
+  /**
+   * 배경음악은 오디오 요소 하나를 계속 재사용하고 곡만 바꿔 끼운다.
+   * iOS Safari 는 사용자 터치 중에 소리 내어 재생된 적 있는 요소만 이후(타이머 등)에 재생을 허용하므로,
+   * 곡마다 요소를 따로 두면 승리 화면처럼 터치 없이 시작되는 곡이 막힌다.
+   */
+  private bgmMain: HTMLAudioElement | null = null;
+  private bgmCur = '';
+  private bgmElement() {
+    if (!this.bgmMain) {
+      const el = new Audio();
+      el.preload = 'auto';
       el.loop = true;
-      el.src = ver(url);
       el.setAttribute('playsinline', '');
-      this.bgmPool.set(url, el);
+      this.bgmMain = el;
     }
-    return el;
+    return this.bgmMain;
   }
 
-  /** 사용자 입력 안에서 모든 배경음악 요소를 무음으로 한 번 재생 → iOS 자동재생 제한 해제 */
+  /** 사용자 입력 안에서 배경음악 요소를 한 번 재생해 iOS 재생 권한을 얻음 (재생 중인 곡이 없을 때만 무음으로) */
   private primed = false;
   private primeBgm() {
     if (this.primed) return;
-    this.primed = true;
-    const urls = new Set((['title', 'field', 'boss', 'victory'] as MusicMode[]).map((m) => this.bgmUrl(m)).filter(Boolean));
-    for (const url of urls) {
-      const el = this.bgmElement(url);
-      if (el === this.bgmEl) continue;
-      el.muted = true;
-      const r = el.play();
-      if (r && r.then) r.then(() => { if (el !== this.bgmEl) el.pause(); el.muted = !this.bgmOn; }).catch(() => {});
+    const el = this.bgmElement();
+    if (this.bgmEl) {
+      this.primed = true; // music() 가 같은 요소를 곧바로 재생
+      return;
     }
+    const url = this.bgmUrl('title') || this.bgmUrl('field');
+    if (!url) return;
+    this.primed = true;
+    el.src = ver(url);
+    this.bgmCur = url;
+    el.muted = true;
+    const r = el.play();
+    if (r && r.then) r.then(() => { if (!this.bgmEl) el.pause(); el.muted = !this.bgmOn; }).catch(() => {});
   }
 
   setBgm(on: boolean) {
@@ -345,36 +352,38 @@ class AudioEngine {
       this.musicTimer = null;
     }
     const url = this.bgmUrl(mode);
-    const prev = this.bgmEl;
+    const el = this.bgmElement();
     // 같은 곡이면 끊지 않고 이어서 재생 (예: 필드 → 보스전에서 보스 곡이 없을 때)
-    if (prev && url && prev === this.bgmPool.get(url)) return;
-    if (prev) {
+    if (url && this.bgmEl && url === this.bgmCur) return;
+    this.cancelFade();
+    if (!url || mode === 'none') {
+      if (this.bgmEl) this.fadeOut(el);
       this.bgmEl = null;
-      this.fadeOut(prev);
+      if (mode !== 'none' && this.ctx) this.startSynthMusic();
+      return;
     }
-    if (mode === 'none') return;
-    if (url) {
-      const el = this.bgmElement(url);
-      el.muted = !this.bgmOn;
-      el.volume = BGM_VOL;
+    if (url !== this.bgmCur) {
+      el.src = ver(url);
+      this.bgmCur = url;
+    } else {
       try {
         el.currentTime = 0;
       } catch {
         /* 메타데이터 로딩 전 */
       }
-      el.onerror = () => {
-        if (this.bgmEl === el) {
-          this.bgmEl = null;
-          this.startSynthMusic();
-        }
-      };
-      this.bgmEl = el;
-      el.play().catch(() => {
-        /* 자동재생 차단: 다음 사용자 입력(unlock)에서 다시 시도 */
-      });
-      return;
     }
-    if (this.ctx) this.startSynthMusic();
+    el.muted = !this.bgmOn;
+    el.volume = BGM_VOL;
+    el.onerror = () => {
+      if (this.bgmEl === el) {
+        this.bgmEl = null;
+        this.startSynthMusic();
+      }
+    };
+    this.bgmEl = el;
+    el.play().catch(() => {
+      /* 자동재생 차단: 다음 사용자 입력(unlock)에서 다시 시도 */
+    });
   }
 
   /** 배경음악이 브라우저 자동재생 제한으로 대기 중인지 */
@@ -392,15 +401,23 @@ class AudioEngine {
     if (el && el.paused && this.bgmOn) el.play().catch(() => {});
   }
 
+  private cancelFade() {
+    if (this.fadeTimer) {
+      clearInterval(this.fadeTimer);
+      this.fadeTimer = null;
+    }
+  }
+
   private fadeOut(el: HTMLAudioElement) {
+    this.cancelFade();
     const start = el.volume;
     let k = 0;
-    const id = window.setInterval(() => {
+    this.fadeTimer = window.setInterval(() => {
       k++;
       el.volume = Math.max(0, start * (1 - k / 8));
       if (k >= 8) {
-        clearInterval(id);
-        el.pause();
+        this.cancelFade();
+        if (!this.bgmEl) el.pause();
         el.volume = BGM_VOL;
       }
     }, 40);
