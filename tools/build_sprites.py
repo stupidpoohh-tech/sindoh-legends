@@ -313,22 +313,24 @@ for team, (fname, needs_bg, B) in CAPTAINS.items():
     fx_sheet = sheet if fx_sheet is None else fx_sheet
     for i, b in enumerate(B['idle']):
         save(f'cap_{team}_idle_{i}', largest(crop(sheet, *b)), scale=CAP_SCALE, center=True)
+    # 개발팀장 시트는 대기 그림에 비해 동작 그림이 작게 그려져 있어, 게임에서 사업팀장과 같은 크기로 보이도록 동작 프레임만 키움
+    fs = CAP_SCALE * (1.14 if team == 'dev' else 1)
     for i, b in enumerate(B['run']):
-        save(f'cap_{team}_run_{i}', largest(crop(sheet, *b)), scale=CAP_SCALE, center=True)
+        save(f'cap_{team}_run_{i}', largest(crop(sheet, *b)), scale=fs, center=True)
     for i, b in enumerate(B['atk']):
-        save(f'cap_{team}_atk_{i}', largest(crop(sheet, *b)), scale=CAP_SCALE, center=True)
+        save(f'cap_{team}_atk_{i}', largest(crop(sheet, *b)), scale=fs, center=True)
     for k in ('hit', 'victory'):
-        save(f'cap_{team}_{k}', largest(crop(sheet, *B[k])), scale=CAP_SCALE, center=True)
-    save(f'cap_{team}_down', largest(crop(sheet, *B['down'])), scale=CAP_SCALE)
+        save(f'cap_{team}_{k}', largest(crop(sheet, *B[k])), scale=fs, center=True)
+    save(f'cap_{team}_down', largest(crop(sheet, *B['down'])), scale=fs)
     save(f'cap_{team}_revive', largest(crop(sheet, *B['revive']), keep_all=True, dil=8), scale=CAP_SCALE)
     save(f'cap_{team}_icon', largest(crop(sheet, *B['icon'])), height=96)
     save(f'cap_{team}_emblem', largest(crop(sheet, *B['emblem']), dil=8), height=72)
     save(f'fx_cap_{team}_bolt', largest(crop(fx_sheet, *B['bolt']), dil=8), height=60)
     if team == 'push':
         # 추진팀장 기본 서 있는 모습: 단독 일러스트(추진팀장2.png)를 시트 대기 프레임과 같은 키로 맞춤
-        # 게임은 대기 그림 높이로 전체 배율을 정하므로, 달리기 모습이 개발(약 68px)·사업(약 78px)팀장의 중간인 73px로 보이게 대기 높이를 정함
+        # 게임은 대기 그림 높이로 전체 배율을 정하므로, 달리기 모습이 사업팀장과 같은 약 78px로 보이게 대기 높이를 정함
         run_h = largest(crop(sheet, *B['run'][0])).height * CAP_SCALE
-        idle_h = round(run_h * 82 / 73)
+        idle_h = round(run_h * 82 / 78)
         save('cap_push_idle_0', largest(load('추진팀장2.png')), height=idle_h, center=True)
 
 # 게임 코드용 목록 갱신
