@@ -1,3 +1,4 @@
+import { ver } from '../core/assetVersion';
 import { runtime } from '../config/runtime';
 import { save } from '../core/save';
 
@@ -101,7 +102,7 @@ class AudioEngine {
     for (const key of Object.keys(audio)) {
       const url = audio[key];
       if (!url || key.startsWith('bgm') || key.startsWith('_')) continue;
-      fetch(url)
+      fetch(ver(url))
         .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject()))
         .then((buf) => this.ctx!.decodeAudioData(buf))
         .then((ab) => this.files.set(key, ab))
@@ -124,7 +125,7 @@ class AudioEngine {
       el = new Audio();
       el.preload = 'none';
       el.loop = true;
-      el.src = url;
+      el.src = ver(url);
       el.setAttribute('playsinline', '');
       this.bgmPool.set(url, el);
     }

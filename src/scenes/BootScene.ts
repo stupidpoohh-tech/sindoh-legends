@@ -1,3 +1,4 @@
+import { ver } from '../core/assetVersion';
 import Phaser from 'phaser';
 import * as S from '../art/svgs';
 import { runtime } from '../config/runtime';
@@ -51,9 +52,9 @@ export class BootScene extends Phaser.Scene {
     const overrides = runtime.assets.images || {};
     this.load.on('progress', (v: number) => bus.emit('loading', v * 0.9));
     this.load.on('loaderror', (file: Phaser.Loader.File) => this.failed.add(file.key));
-    for (const key of SPRITE_KEYS) this.load.image(key, overrides[key] || `assets/game/${key}.webp`);
-    this.load.image('tile_grass', overrides.tile_grass || 'assets/game/tile_grass.webp');
-    for (const key of Object.keys(SVG_ONLY)) if (overrides[key]) this.load.image(key, overrides[key]);
+    for (const key of SPRITE_KEYS) this.load.image(key, ver(overrides[key] || `assets/game/${key}.webp`));
+    this.load.image('tile_grass', ver(overrides.tile_grass || 'assets/game/tile_grass.webp'));
+    for (const key of Object.keys(SVG_ONLY)) if (overrides[key]) this.load.image(key, ver(overrides[key]));
   }
 
   create() {

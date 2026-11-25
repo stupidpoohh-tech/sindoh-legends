@@ -47,9 +47,10 @@ const minionAnim = (k: string): Unit['anim'] => ({
   hit: `m_${k}_hit`,
 });
 const mv = (k: string, h = 58): ViewDef => ({ tex: `m_${k}_idle`, h, r: 16, hpW: 32, hpY: -h - 8, anim: minionAnim(k) });
-/** 팀장 NPC: 일반 미니언(58)의 약 1.4배 */
+/** 팀장 NPC: 일반 미니언(58)의 약 1.4배. 사업팀장 그림은 인물이 작게 그려져 있어 조금 크게 표시 */
+const CAP_H: Record<string, number> = { push: 82, dev: 82, biz: 87 };
 const capView = (t: string): ViewDef => ({
-  tex: `cap_${t}_idle_0`, h: 82, r: 20, hpW: 44, hpY: -92,
+  tex: `cap_${t}_idle_0`, h: CAP_H[t], r: 20, hpW: 44, hpY: -CAP_H[t] - 10,
   anim: {
     idle: t === 'biz' ? ['cap_biz_idle_0', 'cap_biz_idle_1', 'cap_biz_idle_2', 'cap_biz_idle_3'] : [`cap_${t}_idle_0`],
     run: [0, 1, 2, 3].map((i) => `cap_${t}_run_${i}`),
@@ -493,7 +494,7 @@ export class GameScene extends Phaser.Scene implements LaneHost {
       u.setHpColor(0x3d9bff);
       u.refreshHp();
       // 이름표 + 패시브 범위 표시
-      const tag = gameText(this, 0, -108, def.name, 'captain');
+      const tag = gameText(this, 0, -CAP_H[team] - 26, def.name, 'captain');
       const aura = this.add.image(0, 2, 'fx_ring').setTint(TEAM_COLOR[team]).setAlpha(0.28);
       aura.setDisplaySize(BALANCE.captains.passiveRadius * 2, BALANCE.captains.passiveRadius * 1.24);
       u.view.addAt(aura, 0);

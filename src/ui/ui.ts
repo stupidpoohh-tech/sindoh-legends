@@ -1,3 +1,4 @@
+import { ver } from '../core/assetVersion';
 import { bus } from '../core/events';
 import { fsm, GameState } from '../core/state';
 import { save } from '../core/save';
@@ -44,7 +45,7 @@ function later(fn: () => void, ms: number) {
  * 루트 배포(https://x/)와 하위 경로 배포(https://x/sindoh/) 모두 동작합니다.
  */
 export const assetUrl = (path: string) => new URL(path, document.baseURI).href;
-const G = (k: string) => assetUrl(`assets/game/${k}.webp`);
+const G = (k: string) => ver(assetUrl(`assets/game/${k}.webp`));
 /** 일러스트 이미지 + 로딩 실패 시 내장 SVG 대체 */
 function artImg(src: string, fallbackPose: 'idle' | 'victory', cls = '', alt = '') {
   const fb = svgDataUrl(championSvg(fallbackPose));

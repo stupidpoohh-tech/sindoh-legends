@@ -295,6 +295,8 @@ POSE_RATIO_TEAMS = ('push', 'dev')
 POSE_RATIO = {'run': 0.95, 'atk': 1.0, 'victory': 1.0}
 # 추진팀장 대기 그림(단독 일러스트)은 시트보다 머리가 작은 비율이라, 동작 그림을 조금 낮춰야 같은 크기로 보임
 POSE_TEAM_K = {'push': 0.9, 'dev': 1.0}
+# 달리기는 몸을 숙인 자세라 작아 보이므로 추진팀장은 머리 비율 보정(0.9)을 빼고 서 있을 때 키에 맞춤
+POSE_RUN_K = {'push': 1.0, 'dev': 1.0}
 
 def fig_height(im):
     """이펙트(파란 글로우·노란 빛)를 뺀 인물 덩어리의 세로 길이"""
@@ -342,7 +344,7 @@ for team, (fname, needs_bg, B) in CAPTAINS.items():
             return POSE_TEAM_K[team] * ratio * idle_fig / fig_height(im)
         run_scales = []
         for i, b in enumerate(B['run']):
-            im = largest(crop(sheet, *b)); sc = fit(im, POSE_RATIO['run']); run_scales.append(sc)
+            im = largest(crop(sheet, *b)); sc = fit(im, POSE_RATIO['run']) * POSE_RUN_K[team] / POSE_TEAM_K[team]; run_scales.append(sc)
             save(f'cap_{team}_run_{i}', im, scale=sc, center=True)
         for i, b in enumerate(B['atk']):
             im = largest(crop(sheet, *b))
