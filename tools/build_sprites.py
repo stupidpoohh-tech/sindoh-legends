@@ -225,12 +225,15 @@ with open(os.path.join(OUT, 'manifest.json'), 'w') as f:
 print(len(manifest), 'sprites')
 
 # ───────── 팀장 NPC (추진·개발·사업) ─────────
-def remove_light_bg(im):
+def remove_light_bg(im, lo=232, sat=10):
     """흰/연회색 배경(투명 아님)을 투명으로: 테두리와 연결된 밝은 무채색 영역 + 큰 내부 배경 조각"""
     a = np.array(im.convert('RGBA')).astype(np.int32)
     rgb = a[:, :, :3]
     mx, mn = rgb.max(2), rgb.min(2)
-    light = (mn >= 232) & (mx - mn <= 10)
+    light = (mn >= lo) & (mx - mn <= sat)
+    if lo < 232:
+        # 잡티 섞인 배경: 작은 구멍을 메워 한 덩어리로
+        light = ndimage.binary_closing(light, iterations=2) & (mn >= lo - 20)
     lab, n = ndimage.label(light)
     border = set(np.unique(np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]]))) - {0}
     sizes = ndimage.sum(light, lab, range(1, n + 1))
@@ -240,9 +243,9 @@ def remove_light_bg(im):
             kill[i] = True
     bg = kill[lab]
     edge = ndimage.binary_dilation(bg, iterations=1) & ~bg
-    soft = edge & (mn >= 200) & (mx - mn <= 18)
+    soft = edge & (mn >= lo - 32) & (mx - mn <= 18)
     alpha = np.where(bg, 0, 255)
-    alpha = np.where(soft, ((255 - mn) * 255 / 55).clip(0, 255), alpha)
+    alpha = np.where(soft, ((255 - mn) * 255 / (255 - lo + 32)).clip(0, 255), alpha)
     a[:, :, 3] = np.minimum(a[:, :, 3], alpha)
     return Image.fromarray(a.astype(np.uint8))
 
@@ -251,7 +254,7 @@ def split4(x, y, w, h):
     return [(int(x + i * q), y, int(q), h) for i in range(4)]
 
 CAPTAINS = {
-    'push': ('추진팀장 스프라이트 시트.png', True, {
+    'push': ('추진팀장 스프라이트 시트2.png', True, {
         'idle': [(23, 10, 199, 245)], 'run': split4(1291, 39, 483, 190),
         'atk': [(24, 256, 185, 220), (220, 257, 192, 217), (418, 241, 226, 234), (626, 263, 239, 211)],
         'hit': (910, 476, 172, 209), 'down': (1070, 530, 222, 150), 'revive': (1285, 406, 215, 300),
@@ -277,8 +280,25 @@ CAPTAINS = {
 CAP_SCALE = 170 / 245  # 모든 프레임 동일 배율
 for team, (fname, needs_bg, B) in CAPTAINS.items():
     sheet = Image.open(os.path.join(SRC, fname))
-    sheet = remove_light_bg(sheet) if needs_bg else sheet.convert('RGBA')
+    if sheet.mode == 'RGBA' and needs_bg:
+        # 반투명 밝은 배경 시트: 흰 바탕에 합친 뒤 배경 제거
+        sheet = Image.alpha_composite(Image.new('RGBA', sheet.size, (255, 255, 255, 255)), sheet)
+    white_sheet = sheet
+    fx_sheet = None
+    if needs_bg and fname.endswith('2.png'):
+        # 같은 배치의 기존 시트(깨끗한 흰 배경)에서 얻은 외곽 마스크로 잡티 배경·글로우 주변 회색을 걷어냄
+        sheet = remove_light_bg(sheet, 214, 9)
+        ref = np.array(remove_light_bg(Image.open(os.path.join(SRC, fname.replace('2.png', '.png')))))[:, :, 3]
+        ref = ndimage.maximum_filter(ref, size=7)
+        a = np.array(sheet); a[:, :, 3] = np.minimum(a[:, :, 3], ref); sheet = Image.fromarray(a)
+        # 하얀 심이 있는 번개 이펙트는 기본 기준으로 (안쪽 흰색 유지)
+        fxa = np.array(remove_light_bg(white_sheet)); fxa[:, :, 3] = np.minimum(fxa[:, :, 3], ref); fx_sheet = Image.fromarray(fxa)
+    elif needs_bg:
+        sheet = remove_light_bg(sheet)
+    else:
+        sheet = sheet.convert('RGBA')
     a = np.array(sheet); a[:, :, 3][a[:, :, 3] < 30] = 0; sheet = Image.fromarray(a)
+    fx_sheet = sheet if fx_sheet is None else fx_sheet
     for i, b in enumerate(B['idle']):
         save(f'cap_{team}_idle_{i}', largest(crop(sheet, *b)), scale=CAP_SCALE, center=True)
     for i, b in enumerate(B['run']):
@@ -291,7 +311,11 @@ for team, (fname, needs_bg, B) in CAPTAINS.items():
     save(f'cap_{team}_revive', largest(crop(sheet, *B['revive']), keep_all=True, dil=8), scale=CAP_SCALE)
     save(f'cap_{team}_icon', largest(crop(sheet, *B['icon'])), height=96)
     save(f'cap_{team}_emblem', largest(crop(sheet, *B['emblem']), dil=8), height=72)
-    save(f'fx_cap_{team}_bolt', largest(crop(sheet, *B['bolt']), dil=8), height=60)
+    save(f'fx_cap_{team}_bolt', largest(crop(fx_sheet, *B['bolt']), dil=8), height=60)
+    if team == 'push':
+        # 추진팀장 기본 서 있는 모습: 단독 일러스트(추진팀장2.png)를 시트 대기 프레임과 같은 키로 맞춤
+        idle_h = round(largest(crop(sheet, *B['idle'][0])).height * CAP_SCALE)
+        save('cap_push_idle_0', largest(load('추진팀장2.png')), height=idle_h, center=True)
 
 # 게임 코드용 목록 갱신
 keys = sorted(k for k in manifest if not k.startswith(('title_', 'tile_', 'intro_', 'diorama')))
